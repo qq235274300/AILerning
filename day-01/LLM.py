@@ -133,7 +133,7 @@ order_db = {
         "status": "shipped",
         "estimated_delivery": "2025-12-05",
         "purchase_date": "2025-12-01",
-        "email": "joe@example.com"
+        "email": "1024747899@qq.com"
     },
     "XYZ-23456": {
         "status": "processing",
@@ -165,4 +165,163 @@ def lookup_faq_answer(args: FAQLookupArgs) -> str:
     if best_match and best_score > 0:
         return best_match["answer"]
     return "Sorry , I couldn't find an FAQ answer for your question."
-    
+
+def check_order_status(args: CheckOrderStatusArgs):
+    """Simulate checking the status of a customer's order by
+    order_id and email."""
+    order = order_db.get(args.order_id)
+    if not order:
+        return {
+            "order_id": args.order_id,
+            "status": "not found",
+            "estimated_delivery": None,
+            "note": "order_id not found"
+        }
+    if args.email.lower() != order.get("email", "").lower():
+        return {
+            "order_id": args.order_id,
+            "status": order["status"],
+            "estimated_delivery": order["estimated_delivery"],
+            "note": "order_id found but email mismatch"
+        }
+    return {
+        "order_id": args.order_id,
+        "status": order["status"],
+        "estimated_delivery": order["estimated_delivery"],
+        "note": "order_id and email match"
+    }
+
+tool_definitions = [
+    {
+        "type": "function",
+        "function": {
+            "name": "lookup_faq_answer",
+            "description": "Look up an FAQ answer by matching tags to FAQ DATABASE.",
+            "parameters": FAQLookupArgs.model_json_schema()
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "check_order_status",
+            "description": "Check the status of a customer's order.",
+            "parameters": CheckOrderStatusArgs.model_json_schema()
+        }
+    }
+]
+
+class OrderDetails(BaseModel):
+    status: str
+    estimated_delivery: str
+    note: str
+
+class SupportTicket(User_Query):
+    recommended_next_action: Literal[
+        'escalate_to_agent','send_faq_response',
+        'send_order_statuss','no_action_needed'
+    ] = Field(
+        ...,description="LLM's recommended next action for support"
+    )
+    order_details: Optional[OrderDetails] = Field(
+        None, description="Order details if action is send_order_status"
+    )
+    faq_response: Optional[str] = Field(
+        None,description="FAQ response if action is send_faq_response"
+    )
+    creation_date: datetime = Field(
+        ...,description="Date and time the ticket was created"
+    )
+
+client = OpenAI()
+def decide_next_action_with_tools(user_query: User_Query):
+    support_ticket_schema = json.dumps(
+        SupportTicket.model_json_schema(),indent=2
+    )
+    system_prompt = f"""
+    You are a helpful customer support agent. Your job is to
+    determine what support action should be taken for the customer,
+    based on the customer query and the expected fields in the
+    SupportTicket schema below. If more information on a particular
+    order_id or FAQ response would be helpful in responding to the
+    user query and can be obtained by calling a tool, call the
+    appropriate tool to get that information. If an order_id is
+    present in the query, always look up the order status to get
+    more information on the order.
+
+    Here is the JSON schema for the SupportTicket model you must
+    use as context for what information is expected:
+    {support_ticket_schema}
+    """    
+    messages = [
+        {"role": "system","content": system_prompt},
+        {"role": "user","content": str(user_query.model_dump())}
+    ]
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=messages,
+        tools = tool_definitions,
+        tool_choice="auto"
+    )
+    message = response.choices[0].message
+    tool_calls = getattr(message,"tool_calls",None)
+    return message, tool_calls, messages
+
+message, tool_calls, messages = decide_next_action_with_tools(
+    valid_response
+)   
+print("LLM message:\n", json.dumps(message.model_dump(),indent=2))
+print(
+    "\nTool calls:\n",
+    json.dumps([call.model_dump() for call in tool_calls],indent=2)
+)
+
+def get_tool_outputs(tool_calls):
+    tool_outputs = []
+
+    if tool_calls:
+        for tool_call in tool_calls:
+
+            if tool_call.function.name == "lookup_faq_answer":
+                print("Agent requested a call to the Lookup FAQ tool...")
+
+                args = FAQLookupArgs.model_validate_json(
+                    tool_call.function.arguments
+                )
+
+                result = lookup_faq_answer(args)
+
+                tool_outputs.append({
+                    "tool_call_id": tool_call.id,
+                    "output": result
+                })
+
+                print(f"Lookup FAQ tool returned {result}")
+
+            elif tool_call.function.name == "check_order_status":
+                print("Agent requested a call to Check Order Status tool...")
+
+                args = CheckOrderStatusArgs.model_validate_json(
+                    tool_call.function.arguments
+                )
+
+                result = check_order_status(args)
+
+                tool_outputs.append({
+                    "tool_call_id": tool_call.id,
+                    "output": result
+                })
+
+                print(f"Check Order Status tool returned {result}")
+
+    return tool_outputs
+
+
+# Stage 2: Gather any needed tool outputs and generate a support
+# ticket (run this after inspecting above)
+
+tool_outputs = get_tool_outputs(tool_calls)
+
+
+# Print tool outputs for inspection
+
+print("Tool outputs:\n", json.dumps(tool_outputs, indent=2))
