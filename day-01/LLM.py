@@ -7,9 +7,11 @@ from dotenv import load_dotenv
 from datetime import date,datetime
 import json
 import nest_asyncio
+from fastapi import FastAPI
 
 load_dotenv()
 nest_asyncio.apply()
+
 
 class UserInput(BaseModel):
     name: str = Field(...,description="User's name")
@@ -374,12 +376,70 @@ test_json = '''
     "purchase_date": null
     }
     '''
+#测试获得support ticket
+# valid_test_json = validate_user_input(test_json).model_dump_json()
+# test_query= create_customer_query(valid_test_json)
+# message,tool_calls,messages = decide_next_action_with_tools(test_query)
+# tool_outputs = get_tool_outputs(tool_calls)
+# support_ticket = generate_structured_support_ticket(
+#     test_query,message,tool_outputs
+# )
+# print(support_ticket.model_dump_json(indent=2))
 
-valid_test_json = validate_user_input(test_json).model_dump_json()
-test_query= create_customer_query(valid_test_json)
-message,tool_calls,messages = decide_next_action_with_tools(test_query)
-tool_outputs = get_tool_outputs(tool_calls)
-support_ticket = generate_structured_support_ticket(
-    test_query,message,tool_outputs
-)
-print(support_ticket.model_dump_json(indent=2))
+class ChatRequest(BaseModel):
+    question: str
+
+app = FastAPI()
+
+# client_messages = [
+#     {"role": "system","content": "You are an Unreal Engine C++ expert with 10 years of experience."},
+#     {"role": "user","content": ChatRequest.question},
+#     {"role": "assistant","content": ""}
+# ]
+
+class UEAnswer(BaseModel):
+    reason: str
+    solution: str
+    code_example: str
+
+chat_history = [
+    {
+        "role": "system",
+        "content": "You are an Unreal Engine C++ expert with 10 years of experience."
+    }
+]
+   
+@app.post("/chat")
+async def chat(req: ChatRequest):
+    chat_history.append(
+        {
+            "role": "user",
+            "content": req.question
+        }
+    )
+    response = client.chat.completions.parse(
+        model="gpt-4o",
+        messages=chat_history,
+        response_format=UEAnswer     
+    )
+    answer = response.choices[0].message.parsed
+    chat_history.append(
+        {
+            "role": "assistant",
+            "content": answer.solution
+        }
+    )
+    return {
+        "reason": answer.reason,
+        "solution": answer.solution,
+        "code_example": answer.code_example
+    }
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(
+        app,
+        host="127.0.0.1",
+        port=8000
+    )
+
