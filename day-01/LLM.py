@@ -76,8 +76,8 @@ user_input_json = '''
 #根据用户输入 通过LLM&pydantic 得到希望的结构 
 valid_date = validate_user_input(user_input_json).model_dump_json()
 valid_response = create_customer_query(valid_date)
-print(type(valid_response))
-print(valid_response.model_dump_json(indent=2))
+# print(type(valid_response))
+# print(valid_response.model_dump_json(indent=2))
 
 #FAQ Lookup tool input
 class FAQLookupArgs(BaseModel):
@@ -132,7 +132,7 @@ order_db = {
     "ABC-12345": {
         "status": "shipped",
         "estimated_delivery": "2025-12-05",
-        "purchase_date": "2025-12-01",
+        "purchase_date": "2026-08-06",
         "email": "1024747899@qq.com"
     },
     "XYZ-23456": {
@@ -148,7 +148,7 @@ order_db = {
         "email": "bob@example.com"
     }
 }
-#知识库检索
+#知识库检索 每个单词比对获得分数
 def lookup_faq_answer(args: FAQLookupArgs) -> str:
     """Look up an FAQ answer by matching tags and words in query
     to FAQ entry keywords."""
@@ -191,6 +191,7 @@ def check_order_status(args: CheckOrderStatusArgs):
         "note": "order_id and email match"
     }
 
+#pass to LLM
 tool_definitions = [
     {
         "type": "function",
@@ -269,11 +270,11 @@ def decide_next_action_with_tools(user_query: User_Query):
 message, tool_calls, messages = decide_next_action_with_tools(
     valid_response
 )   
-print("LLM message:\n", json.dumps(message.model_dump(),indent=2))
-print(
-    "\nTool calls:\n",
-    json.dumps([call.model_dump() for call in tool_calls],indent=2)
-)
+# print("LLM message:\n", json.dumps(message.model_dump(),indent=2))
+# print(
+#     "\nTool calls:\n",
+#     json.dumps([call.model_dump() for call in tool_calls],indent=2)
+# )
 
 def get_tool_outputs(tool_calls):
     tool_outputs = []
@@ -315,13 +316,70 @@ def get_tool_outputs(tool_calls):
 
     return tool_outputs
 
-
 # Stage 2: Gather any needed tool outputs and generate a support
 # ticket (run this after inspecting above)
 
+# tool_outputs = get_tool_outputs(tool_calls)
+# print("Tool outputs:\n", json.dumps(tool_outputs, indent=2))
+
+# Create the OpenAI client with Instructor
+openai_client = instructor.from_openai(
+    OpenAI()
+)
+
+def generate_structured_support_ticket(
+    customer_query: User_Query,
+    message,
+    tool_outputs: list
+) -> SupportTicket:
+
+    tool_results_str = "\n".join([
+        f"Tool: {out['tool_call_id']} Output: {json.dumps(out['output'])}"
+        for out in tool_outputs
+    ]) if tool_outputs else "No tool calls were made."
+
+    # Concatenate prompt parts into a single string
+    prompt = f"""
+        You are a support agent. Use all information below to
+        generate a support ticket as a validated Pydantic model.
+        Customer query:{customer_query.model_dump_json(indent=2)}
+        LLM message:{str(message.content)}
+        Tool results:{tool_results_str}
+    """
+    # Create the message with structured output
+    support_ticket = openai_client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ],
+        response_model=SupportTicket
+    )
+
+    support_ticket.creation_date = datetime.now()
+    return support_ticket
+
+# support_ticket = generate_structured_support_ticket(valid_response,message,tool_outputs)
+# print(support_ticket.model_dump_json(indent=2))
+
+#Test
+test_json = '''
+    {
+    "name": "Joe User",
+    "email": "joe@example.com",
+    "query": "How can I delete my account",
+    "order_id": "QWE-34567",
+    "purchase_date": null
+    }
+    '''
+
+valid_test_json = validate_user_input(test_json).model_dump_json()
+test_query= create_customer_query(valid_test_json)
+message,tool_calls,messages = decide_next_action_with_tools(test_query)
 tool_outputs = get_tool_outputs(tool_calls)
-
-
-# Print tool outputs for inspection
-
-print("Tool outputs:\n", json.dumps(tool_outputs, indent=2))
+support_ticket = generate_structured_support_ticket(
+    test_query,message,tool_outputs
+)
+print(support_ticket.model_dump_json(indent=2))
