@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+<h2>UE C++ AI Assistant</h2>
+
+<textarea id="question" rows="5" cols="50">
+介绍一下UE的UObject
+</textarea>
+
+<br>
+
+<button onclick="send()">发送</button>
+
+<div id="answer">
+    <h3>Reason</h3>
+    <pre id="reason"></pre>
+
+    <h3>Solution</h3>
+    <pre id="solution"></pre>
+
+    <h3>Code Example</h3>
+    <pre id="code_example"></pre>
+
+    <h3>Raw Stream</h3>
+    <pre id="raw"></pre>
+</div>
+
+
+<script>
+
+async function send(){
+
+    const question = document.getElementById("question").value;
+
+    const reasonBox = document.getElementById("reason");
+    const solutionBox = document.getElementById("solution");
+    const codeExampleBox = document.getElementById("code_example");
+    const rawBox = document.getElementById("raw");
+
+    reasonBox.textContent = "";
+    solutionBox.textContent = "";
+    codeExampleBox.textContent = "";
+    rawBox.textContent = "";
+
+    const response = await fetch(
+        "http://127.0.0.1:8000/chat/stream",
+        {
+            method:"POST",
+            headers:{
+                "Content-Type":"application/json"
+            },
+            body:JSON.stringify({
+                question:question
+            })
+        }
+    );
+
+    if(!response.ok){
+        rawBox.textContent = "Request failed: " + response.status;
+        return;
+    }
+
+    const reader = response.body.getReader();
+
+    const decoder = new TextDecoder();
+
+    let fullText = "";
+
+    while(true){
+
+        const {
+            done,
+            value
+        } = await reader.read();
+
+
+        if(done){
+            break;
+        }
+
+
+        const text = decoder.decode(
+            value,
+            {
+                stream:true
+            }
+        );
+
+        fullText += text;
+        rawBox.textContent = fullText;
+
+    }
+
+    fullText += decoder.decode();
+
+    try{
+        const answer = JSON.parse(fullText);
+
+        reasonBox.textContent = answer.reason || "";
+        solutionBox.textContent = answer.solution || "";
+        codeExampleBox.textContent = answer.code_example || "";
+
+        rawBox.textContent = JSON.stringify(
+            answer,
+            null,
+            2
+        );
+    }
+    catch(error){
+        rawBox.textContent = fullText;
+
+    }
+
+}
+
+</script>
+
+</body>
+</html>
