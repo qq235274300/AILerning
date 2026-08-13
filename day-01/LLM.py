@@ -150,27 +150,7 @@ def stream_chat(question: str):
           "type": "json_schema",
           "json_schema": {
               "name": "ue_answer",
-              "strict": True,
-              "schema": {
-                  "type": "object",
-                  "properties": {
-                      "reason": {
-                          "type": "string"
-                      },
-                      "solution": {
-                          "type": "string"
-                      },
-                      "code_example": {
-                          "type": "string"
-                      }
-                  },
-                  "required": [
-                      "reason",
-                      "solution",
-                      "code_example"
-                  ],
-                  "additionalProperties": False
-              }
+              "schema": UEAnswer.model_json_schema()
           }
         },
         stream=True

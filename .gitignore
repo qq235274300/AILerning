@@ -1,5 +1,3 @@
 /.venv
 /.vscode
 /day-01/.env
-__pycache__/
-*.pyc
