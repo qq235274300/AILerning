@@ -1,12 +1,21 @@
 from pydantic import BaseModel,Field
+from typing import Literal, List
 
 #用户shuru
 class ChatRequest(BaseModel):
     question: str
 #LLM结构化输出
 class UEAnswer(BaseModel):
+    type: Literal[
+        "compile_error",
+        "link_error",
+        "runtime_error",
+        "reflection_error",
+        "concept_explanation",
+        "other"
+    ]
     reason: str
-    solution: str
+    solution: List[str]
     code_example: str
 #tool_call
 class SearchUEErrorArgs(BaseModel):

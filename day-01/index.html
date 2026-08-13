@@ -13,6 +13,9 @@
 <button onclick="send()">发送</button>
 
 <div id="answer">
+    <h3>Type</h3>
+    <pre id="type"></pre>
+
     <h3>Reason</h3>
     <pre id="reason"></pre>
 
@@ -33,11 +36,13 @@ async function send(){
 
     const question = document.getElementById("question").value;
 
+    const typeBox = document.getElementById("type");
     const reasonBox = document.getElementById("reason");
     const solutionBox = document.getElementById("solution");
     const codeExampleBox = document.getElementById("code_example");
     const rawBox = document.getElementById("raw");
 
+    typeBox.textContent = "";
     reasonBox.textContent = "";
     solutionBox.textContent = "";
     codeExampleBox.textContent = "";
@@ -97,8 +102,13 @@ async function send(){
     try{
         const answer = JSON.parse(fullText);
 
+        typeBox.textContent = answer.type || "";
         reasonBox.textContent = answer.reason || "";
-        solutionBox.textContent = answer.solution || "";
+        solutionBox.textContent = Array.isArray(answer.solution)
+            ? answer.solution.map(
+                (item, index) => `${index + 1}. ${item}`
+            ).join("\n")
+            : answer.solution || "";
         codeExampleBox.textContent = answer.code_example || "";
 
         rawBox.textContent = JSON.stringify(

@@ -137,7 +137,7 @@ def stream_chat(question: str):
         "content": (
             "请根据前面的对话和工具结果，生成最终答案。"
             "必须只输出 JSON，不要 Markdown，不要代码块，不要额外解释。"
-            "JSON 字段必须是 reason、solution、code_example。"
+            "JSON 字段必须是 type、reason、solution、code_example。"
             "每个字段保持简洁，code_example 只给一个最小示例。"
         )
     }
