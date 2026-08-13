@@ -138,6 +138,7 @@ def stream_chat(question: str):
             "请根据前面的对话和工具结果，生成最终答案。"
             "必须只输出 JSON，不要 Markdown，不要代码块，不要额外解释。"
             "JSON 字段必须是 reason、solution、code_example。"
+            "每个字段保持简洁，code_example 只给一个最小示例。"
         )
     }
     ]
@@ -145,7 +146,7 @@ def stream_chat(question: str):
     stream = client.chat.completions.create(
         model="gpt-5.5",
         messages=final_messages,
-        max_completion_tokens=800,
+        max_completion_tokens=3000,
         response_format={
           "type": "json_schema",
           "json_schema": {
