@@ -4,7 +4,10 @@ import numpy as np
 from numpy import dot
 from numpy.linalg import norm
 import re
+import json
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+import chromadb
+from chromadb.config import Settings
 
 load_dotenv()
 
@@ -46,7 +49,8 @@ chunks = splitter.split_text(text)
 for i, chunk in enumerate(chunks):
     print(f"块 {i+1}: {len(chunk)}: {chunk}")
 
-
+#向量检索 redis服务 RDM操作
+#向量数据库
 
 #余弦局里 表示向量方向相似度 值越大越相似
 def cos_sim(a,b):
@@ -58,11 +62,44 @@ def l2(a,b):
 #知识库 将数据(pdf txt execl..)chunk ,chunk切分方式很多
 
 
-# def get_embeddings(texts, model = "text-embedding-3-large"):
-#     data = client.embeddings.create(input=texts,model=model).data #data是一个数组 长度根据文本数量
-#     print("data length:", len(data))
-#     print("first embedding length:", len(data[0].embedding))
-#     return [x.embedding for x in data]
+def get_embeddings(texts, model = "text-embedding-3-large"):
+    data = client.embeddings.create(input=texts,model=model).data #data是一个数组 长度根据文本数量
+    # print("data length:", len(data))
+    # print("first embedding length:", len(data[0].embedding))
+    return [x.embedding for x in data]
 
-# test_query = ["川普大总统"]
-# vec = get_embeddings(test_query)
+with open('.josn','r',encoding='uft-8') as f :
+    data = [json.loads(line) for line in f]
+    
+instructions = [entry['instruction'] for entry in data[0:100]]
+outputs = [entry['outut'] for entry in data[0:100]]
+
+class MyVectorDCCOnnector:
+    def __init__(self,collection_name,embedding_fn):
+        chroma_client = chromadb.Client(Settings(allow_reset = True))
+        chroma_client.reset()
+        self.collection = chroma_client.get_or_create_collection(name = collection_name)
+        self.embedding_fn = embedding_fn
+        
+    def add_documents(self,instructions,outputs):
+        embeddings = self.embedding_fn(instructions)
+        self.collection.add(
+            embeddings= embeddings,
+            documents=outputs,
+            ids = [f"id{i}" for i in range(len(outputs))]
+        )
+    
+    def search(self, query, top_n):
+        results = self.collection.query(
+            query_embeddings=self.embedding_fn([query]),
+            n_results=top_n
+        )
+        return results
+    
+vector_db = MyVectorDCCOnnector("demo",get_embeddings)
+vector_db.add_documents(instructions,outputs)
+user_query = ""
+results = vector_db.search(user_query,2)
+
+for para in results['documents'][0]:
+    print(para + "\n")
