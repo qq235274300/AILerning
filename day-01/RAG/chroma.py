@@ -1,5 +1,16 @@
 import chromadb
+import hashlib
 from .DBembedding import get_embeddings
+
+def make_document_id(document, index):
+    source = document["metadata"].get("source", "unknown")
+    page = document["metadata"].get("page", "unknown")
+    chunk_index = document["metadata"].get("chunk_index", index)
+
+    raw_id = f"{source}:{page}:{chunk_index}"
+
+    return hashlib.md5(raw_id.encode("utf-8")).hexdigest()
+
 class ChromaDB:
     
     def __init__(self):
@@ -18,8 +29,8 @@ class ChromaDB:
             ],
             embeddings=embeddings,
             ids=[
-                f"id_{i}"
-                for i in range(len(documents))
+               make_document_id(document, i)
+               for i, document in enumerate(documents)
             ]
         )
     def search(self,query,top_k = 3):
