@@ -19,7 +19,12 @@ tool_definitions = [
     "type": "function",
     "function": {
         "name": "search_ue_docs",
-        "description": "Search Unreal Engine documentation knowledge base. Use this when the user asks about UE classes, APIs, engine source, or usage details.",
+        "description": (
+            "Search the local technical knowledge base, including Unreal Engine "
+            "documents and DirectX 12 graphics programming documents. Use this "
+            "when the user asks about UE classes, APIs, engine source, rendering, "
+            "textures, RHI, GPU resources, or DirectX graphics concepts."
+        ),
         "parameters": SearchUEDocsArgs.model_json_schema()
         }
     }
