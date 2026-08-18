@@ -1,10 +1,10 @@
 from pathlib import Path
 
-from pdfLoader import pdf_to_images_limit,pdf_to_images
-from ocr import image_to_text
-from DBchunk import split_text
-from DBembedding import get_embeddings
-from chroma import ChromaDB
+from RAG.pdfLoader import pdf_to_images
+from RAG.ocr import image_to_documents
+from RAG.DBchunk import split_documents
+from RAG.DBembedding import get_document_embeddings
+from RAG.chroma import ChromaDB
 
 pdf_path = Path(__file__).parent / "虚幻引擎程序设计浅析.pdf"
 
@@ -12,13 +12,13 @@ pdf_path = Path(__file__).parent / "虚幻引擎程序设计浅析.pdf"
 images = pdf_to_images(pdf_path)
 
 
-texts = image_to_text(images)
+documents  = image_to_documents(images, source=pdf_path.name)
 
 
-chunks = split_text(texts)
+chunks = split_documents(documents)
 
 
-embeddings = get_embeddings(chunks)
+embeddings = get_document_embeddings(chunks)
 
 
 db = ChromaDB()

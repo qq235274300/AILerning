@@ -6,13 +6,20 @@ class ChromaDB:
         client = chromadb.PersistentClient(path="./chroma_db")
         self.collection = client.get_or_create_collection("ue_book")
         
-    def add(self,chunks,embeddings):
+    def add(self,documents,embeddings):
         self.collection.add(
-            documents=chunks,
+            documents=[
+                document["page_content"]
+                for document in documents
+            ],
+            metadatas=[
+                document["metadata"]
+                for document in documents
+            ],
             embeddings=embeddings,
             ids=[
                 f"id_{i}"
-                for i in range(len(chunks))
+                for i in range(len(documents))
             ]
         )
     def search(self,query,top_k = 3):

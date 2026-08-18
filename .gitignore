@@ -3,3 +3,4 @@
 /day-01/.env
 __pycache__/
 *.pdf
+chroma_db/

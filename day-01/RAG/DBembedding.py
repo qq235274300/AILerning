@@ -9,3 +9,10 @@ def get_embeddings(texts, model = "text-embedding-3-large"):
     # print("data length:", len(data))
     # print("first embedding length:", len(data[0].embedding))
     return [x.embedding for x in data]
+
+def get_document_embeddings(documents, model="text-embedding-3-large"):
+    texts = [
+        document["page_content"]
+        for document in documents
+    ]
+    return get_embeddings(texts, model=model)
