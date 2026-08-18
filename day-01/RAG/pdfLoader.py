@@ -11,12 +11,12 @@ def pdf_to_images(pdf_path):
     print(f"PDF页数:{len(images)}")
     return images
 
-def pdf_to_images_limit(pdf_path):
+def pdf_to_images_limit(pdf_path,last_page = 20):
     images = convert_from_path(
         pdf_path,
         dpi=300,
         first_page=1,
-        last_page=5,
+        last_page=last_page,
         poppler_path=r"D:\Me\Release-26.02.0-0\poppler-26.02.0\Library\bin"
     )
     print(f"PDF页数:{len(images)}")

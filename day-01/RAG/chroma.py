@@ -1,8 +1,9 @@
 import chromadb
+from .DBembedding import get_embeddings
 class ChromaDB:
     
     def __init__(self):
-        client = chromadb.Client()
+        client = chromadb.PersistentClient(path="./chroma_db")
         self.collection = client.get_or_create_collection("ue_book")
         
     def add(self,chunks,embeddings):
@@ -14,8 +15,9 @@ class ChromaDB:
                 for i in range(len(chunks))
             ]
         )
-    def search(self,embedding,top_k = 3):
+    def search(self,query,top_k = 3):
+        query_embedding = get_embeddings([query])
         return self.collection.query(
-            query_embeddings=[embedding],
+            query_embeddings=query_embedding,
             n_results=top_k
         )

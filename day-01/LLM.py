@@ -3,6 +3,7 @@ from openai import OpenAI
 from models import UEAnswer
 from prompt import SYSTEM_PROMPT
 from tools import search_ue_error
+from RAG.retriever import search_ue_docs
 from tool_definitions import tool_definitions
 import json
 
@@ -19,6 +20,10 @@ def execute_tool(tool_call):
             args["error_message"]
         )
         return result
+    if tool_call.function.name == "search_ue_docs":
+        args = json.loads(tool_call.function.arguments)
+        result = search_ue_docs(args["query"])
+        return result   
     return None
 
 chat_history = [
