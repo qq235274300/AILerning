@@ -1,5 +1,5 @@
 from .chroma import ChromaDB
-
+from .reranker import rerank
 db = ChromaDB()
 
 #将向量距离转为更直接的得分
@@ -8,8 +8,8 @@ def distance_to_score(distance):
         return None
     return 1 / (1+ distance)
 
-def search_ue_docs(query: str, top_k: int =3):
-    result = db.search(query,top_k=top_k)
+def search_ue_docs(query: str, recall_k: int =20, final_k: int = 5):
+    result = db.search(query,top_k=recall_k)
     documents = result.get("documents", [[]])[0]
     metadatas = result.get("metadatas", [[]])[0]
     distances = result.get("distances", [[]])[0]
@@ -32,5 +32,10 @@ def search_ue_docs(query: str, top_k: int =3):
                 "score": score
             }
         )
+    ranked_snippets = rerank(
+        query=query,
+        snippets=snippets,
+        top_k=final_k
+    )
 
-    return snippets
+    return ranked_snippets
