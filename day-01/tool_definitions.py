@@ -23,7 +23,9 @@ tool_definitions = [
             "Search the local technical knowledge base, including Unreal Engine "
             "documents and DirectX 12 graphics programming documents. Use this "
             "when the user asks about UE classes, APIs, engine source, rendering, "
-            "textures, RHI, GPU resources, or DirectX graphics concepts."
+            "textures, RHI, GPU resources, or DirectX graphics concepts. "
+            "Returned snippets include source, page, distance, and score. "
+            "Higher score means more relevant."
         ),
         "parameters": SearchUEDocsArgs.model_json_schema()
         }
