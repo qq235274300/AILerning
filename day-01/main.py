@@ -4,6 +4,11 @@ from fastapi.responses import StreamingResponse
 from models import ChatRequest
 from llm import chat,stream_chat
 
+# cd /d D:\Me\VSCodeProjects\day-01
+# python -m RAG.build_DB
+# cd /d D:\Me\VSCodeProjects
+# rmdir /s /q chroma_db
+
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,

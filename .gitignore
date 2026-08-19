@@ -1,3 +1,7 @@
 /.venv
 /.vscode
 /day-01/.env
+__pycache__/
+*.pdf
+chroma_db/
+page1.png

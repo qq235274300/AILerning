@@ -22,3 +22,7 @@ class SearchUEErrorArgs(BaseModel):
     error_message: str = Field(
         ...,description="The Unreal Engine error message"
     )
+class SearchUEDocsArgs(BaseModel):
+    query: str = Field(
+        ...,description="he Unreal Engine topic or API question to search for"
+    )
