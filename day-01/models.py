@@ -1,6 +1,19 @@
 from pydantic import BaseModel,Field
 from typing import Literal, List
 
+#搜索文件模型
+class ReadFileArgs(BaseModel):
+    path: str = Field(..., description= "File path to read")
+class ListFilesArgs(BaseModel):
+    directory: str = Field(..., description="Directory path to list")
+class SearchCodeArgs(BaseModel):
+    keyword: str = Field(..., "Keyword to search in project code")
+    directory: str = Field("day-01",description="Directory to search in")
+class SearchLogsArgs(BaseModel):
+    keyword: str = Field(...,description="Keyword to search in log files")
+    directory: str = Field(".",description="Directory to search logs in")
+
+
 #用户shuru
 class ChatRequest(BaseModel):
     question: str

@@ -2,7 +2,7 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from models import UEAnswer
 from prompt import SYSTEM_PROMPT
-from tools import search_ue_error
+from tools import search_ue_error,read_file,list_files,search_code,search_logs
 from RAG.retriever import search_ue_docs
 from tool_definitions import tool_definitions
 import json
@@ -12,19 +12,27 @@ client = OpenAI()
 
 
 def execute_tool(tool_call):
-    if tool_call.function.name == "search_ue_error":
-        args = json.loads(
-            tool_call.function.arguments
+    args = json.loads(tool_call.function.arguments)
+    name = tool_call.function.name
+    if name == "search_ue_error":       
+        return search_ue_error(args["error_message"] ) 
+    if name == "search_ue_docs":       
+            return search_ue_docs(args["query"] )
+    if name == "read_file":
+        return read_file(args["path"])
+    if name == "list_files":
+        return list_files(args["directory"])
+    if name == "search_code":
+        return search_code(
+            args["keyword"],
+            args.get("directory", "day-01")
         )
-        result = search_ue_error(
-            args["error_message"]
+    if name == "search_logs":
+        return search_logs(
+            args["keyword"],
+            args.get("directory", ".")
         )
-        return result
-    if tool_call.function.name == "search_ue_docs":
-        args = json.loads(tool_call.function.arguments)
-        result = search_ue_docs(args["query"])
-        return result   
-    return None
+    return {"error": f"Unknown tool: {name}"}
 
 chat_history = [
     {
@@ -33,6 +41,31 @@ chat_history = [
     }
 ]
 
+def run_tool_loop(chat_history, max_steps = 5):
+    for _ in range(max_steps):
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=chat_history,
+            temperature=0.2,
+            max_tokens=800,
+            tools=tool_definitions,
+            tool_choice="auto"
+        )
+        message = response.choices[0].message
+        
+        if not message.tool_calls:
+            return chat_history
+        chat_history.append(message)
+        for tool_call in message.tool_calls:
+            result = execute_tool(tool_call)
+            chat_history.append({
+                "role": "tool",
+                "tool_call_id": tool_call.id,
+                "content": json.dumps(result, ensure_ascii=False)
+            })
+    return chat_history
+        
+
 def chat(question: str)-> UEAnswer:
     chat_history.append(
         {
@@ -40,63 +73,23 @@ def chat(question: str)-> UEAnswer:
             "content": question
         }
     )
-    #判断是否调用工具
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        messages=chat_history,
-        temperature=0.2,
-        max_tokens=800,
-        tools=tool_definitions,
-        tool_choice="auto"
+    run_tool_loop(chat_history) 
+    #GPT生成答案   根据工具信息 GPT添加自然语言进行组织输出
+    response = client.chat.completions.parse(
+            model="gpt-4o",
+            messages=chat_history,
+            response_format=UEAnswer
     )
-    message = response.choices[0].message
-    # 保存assistant tool_call消息
-    if message.tool_calls:
-        print("🚀 GPT decided to call tool!")
-        chat_history.append(message)
-        for too_call in message.tool_calls:
-            print("Tool name:")
-            print(too_call.function.name)
-            print("Arguments:")
-            print(too_call.function.arguments)
-            result = execute_tool(too_call)          
-            chat_history.append(
-                {
-                    "role": "tool",
-                    "tool_call_id":too_call.id,
-                    "content": json.dumps(result)
-                }
-            ) 
-        #GPT生成答案   根据工具信息 GPT添加自然语言进行组织输出
-        response = client.chat.completions.parse(
-             model="gpt-4o",
-             messages=chat_history,
-             response_format=UEAnswer
-        )
-        answer = response.choices[0].message.parsed
-        chat_history.append(
-            {
-                "role":"assistant",
-                "content":answer.model_dump_json()
-            }
-        ) 
-        return answer
+    answer = response.choices[0].message.parsed
+    chat_history.append(
+        {
+            "role":"assistant",
+            "content":answer.model_dump_json()
+        }
+    ) 
+    return answer
     
-    else:
-        #无需工具直接结构化输出
-        response = client.chat.completions.parse(
-                     model="gpt-4o",
-                     messages=chat_history,
-                     response_format=UEAnswer
-                )
-        answer = response.choices[0].message.parsed
-        chat_history.append(
-            {
-                "role":"assistant",
-                "content":answer.model_dump_json()
-            }
-        ) 
-        return answer
+    
 
 def stream_chat(question: str):
     chat_history.append(
@@ -105,36 +98,7 @@ def stream_chat(question: str):
                 "content": question
             }
         )
-    #先判断是否调用工具
-    response = client.chat.completions.create(
-          model="gpt-5.5",
-          messages=chat_history,
-          max_completion_tokens=800,
-          tools=tool_definitions,
-          tool_choice="auto"
-      )
-    message = response.choices[0].message
-     # 2. 如果 GPT 决定调用工具，执行工具并写入历史
-    if message.tool_calls:
-        print("GPT decided to call tool in stream_chat!")
-
-        chat_history.append(message)
-
-        for tool_call in message.tool_calls:
-            print("Tool name:")
-            print(tool_call.function.name)
-            print("Arguments:")
-            print(tool_call.function.arguments)
-
-            result = execute_tool(tool_call)
-
-            chat_history.append(
-                {
-                    "role": "tool",
-                    "tool_call_id": tool_call.id,
-                    "content": json.dumps(result, ensure_ascii=False)
-                }
-            )
+    run_tool_loop(chat_history)
         
     final_messages = chat_history + [
     {

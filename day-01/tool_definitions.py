@@ -1,5 +1,6 @@
 # tool_definitions.py
 from models import SearchUEErrorArgs,SearchUEDocsArgs
+from models import ReadFileArgs,ListFilesArgs,SearchCodeArgs,SearchLogsArgs
 
 tool_definitions = [
 
@@ -28,6 +29,38 @@ tool_definitions = [
             "Higher score means more relevant."
         ),
         "parameters": SearchUEDocsArgs.model_json_schema()
+        }
+    },
+    {
+    "type": "function",
+    "function": {
+        "name": "read_file",
+        "description": "Read a project file. Use this when analyzing source code or logs.",
+        "parameters": ReadFileArgs.model_json_schema()
+    }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_files",
+            "description": "List files in a project directory.",
+            "parameters": ListFilesArgs.model_json_schema()
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_code",
+            "description": "Search project source code by keyword.",
+            "parameters": SearchCodeArgs.model_json_schema()
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_logs",
+            "description": "Search log files by keyword.",
+            "parameters": SearchLogsArgs.model_json_schema()
         }
     }
 ]
