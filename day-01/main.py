@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from models import ChatRequest
 from LLM import chat,stream_chat
+from Agent.pipeline import run_agent,run_agent_stream
 
 # cd /d D:\Me\VSCodeProjects\day-01
 # python -m RAG.build_DB
@@ -35,6 +36,18 @@ async def chat_stream(req: ChatRequest):
     return StreamingResponse(
         stream_chat(req.question),
         media_type="application/json"
+    )
+    
+@app.post("/agent")
+async def agent_api(req: ChatRequest):
+    result = run_agent(req.question)
+    return result
+
+@app.post("/agent/stream")
+async def agent_stream_api(req: ChatRequest):
+    return StreamingResponse(
+        run_agent_stream(req.question),
+        media_type="application/x-ndjson"
     )
 
 if __name__ == "__main__":
