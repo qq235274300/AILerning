@@ -1,18 +1,6 @@
 from pydantic import BaseModel,Field
 from typing import Literal, List
 
-#搜索文件模型
-class ReadFileArgs(BaseModel):
-    path: str = Field(..., description= "File path to read")
-class ListFilesArgs(BaseModel):
-    directory: str = Field(..., description="Directory path to list")
-class SearchCodeArgs(BaseModel):
-    keyword: str = Field(..., "Keyword to search in project code")
-    directory: str = Field("day-01",description="Directory to search in")
-class SearchLogsArgs(BaseModel):
-    keyword: str = Field(...,description="Keyword to search in log files")
-    directory: str = Field(".",description="Directory to search logs in")
-
 
 #用户shuru
 class ChatRequest(BaseModel):
@@ -30,6 +18,51 @@ class UEAnswer(BaseModel):
     reason: str
     solution: List[str]
     code_example: str
+
+#搜索文件模型
+class ReadFileArgs(BaseModel):
+    path: str = Field(..., description= "File path to read")
+class ListFilesArgs(BaseModel):
+    directory: str = Field(..., description="Directory path to list")
+class SearchCodeArgs(BaseModel):
+    keyword: str = Field(..., "Keyword to search in project code")
+    directory: str = Field("day-01",description="Directory to search in")
+class SearchLogsArgs(BaseModel):
+    keyword: str = Field(...,description="Keyword to search in log files")
+    directory: str = Field(".",description="Directory to search logs in")
+
+#Angent流程
+class RequestAnalysis(BaseModel):
+    task_type: Literal[
+        "crash",
+        "code",
+        "log",
+        "ue_api",
+        "compile_error",
+        "link_error",
+        "other"
+    ]
+    needs_file_context: bool
+    needs_log_context: bool
+    needs_rag_search: bool
+    search_queries: List[str]
+    reason: str
+
+class CollectedContext(BaseModel):
+    files: List[dict]= []
+    logs: List[dict]= []
+    code_snippets: List[dict]= []
+    
+class KnowledgeResult(BaseModel):
+    query: str
+    results: List[dict]
+
+class ReviewResult(BaseModel):
+    passed: bool
+    issues: List[str]
+    revised_answer: UEAnswer | None = None
+
+
 #tool_call
 class SearchUEErrorArgs(BaseModel):
     error_message: str = Field(

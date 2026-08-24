@@ -1,15 +1,15 @@
-from dotenv import load_dotenv
-from openai import OpenAI
 from models import UEAnswer
+from openai_client import (
+    CHAT_MODEL,
+    FINAL_MAX_COMPLETION_TOKENS,
+    TOOL_LOOP_MAX_COMPLETION_TOKENS,
+    client,
+)
 from prompt import SYSTEM_PROMPT
 from tools import search_ue_error,read_file,list_files,search_code,search_logs
 from RAG.retriever import search_ue_docs
 from tool_definitions import tool_definitions
 import json
-
-load_dotenv()
-client = OpenAI()
-
 
 def execute_tool(tool_call):
     args = json.loads(tool_call.function.arguments)
@@ -44,10 +44,9 @@ chat_history = [
 def run_tool_loop(chat_history, max_steps = 5):
     for _ in range(max_steps):
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model=CHAT_MODEL,
             messages=chat_history,
-            temperature=0.2,
-            max_tokens=800,
+            max_completion_tokens=TOOL_LOOP_MAX_COMPLETION_TOKENS,
             tools=tool_definitions,
             tool_choice="auto"
         )
@@ -76,7 +75,7 @@ def chat(question: str)-> UEAnswer:
     run_tool_loop(chat_history) 
     #GPT生成答案   根据工具信息 GPT添加自然语言进行组织输出
     response = client.chat.completions.parse(
-            model="gpt-4o",
+            model=CHAT_MODEL,
             messages=chat_history,
             response_format=UEAnswer
     )
@@ -113,9 +112,9 @@ def stream_chat(question: str):
     ]
        
     stream = client.chat.completions.create(
-        model="gpt-5.5",
+        model=CHAT_MODEL,
         messages=final_messages,
-        max_completion_tokens=3000,
+        max_completion_tokens=FINAL_MAX_COMPLETION_TOKENS,
         response_format={
           "type": "json_schema",
           "json_schema": {

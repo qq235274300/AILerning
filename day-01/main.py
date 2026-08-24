@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from models import ChatRequest
-from llm import chat,stream_chat
+from LLM import chat,stream_chat
 
 # cd /d D:\Me\VSCodeProjects\day-01
 # python -m RAG.build_DB
