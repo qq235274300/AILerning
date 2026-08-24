@@ -2,10 +2,10 @@
 <html>
 <body>
 
-<h2>UE C++ AI Assistant</h2>
+<h2>UE Agent Assistant</h2>
 
 <textarea id="question" rows="5" cols="50">
-介绍一下UE的UObject
+分析 day-01/RAG/chroma.py 这个文件有什么问题
 </textarea>
 
 <br>
@@ -13,17 +13,14 @@
 <button onclick="send()">发送</button>
 
 <div id="answer">
-    <h3>Type</h3>
-    <pre id="type"></pre>
+    <h3>Agent Status</h3>
+    <pre id="status"></pre>
 
-    <h3>Reason</h3>
-    <pre id="reason"></pre>
+    <h3>Final Answer</h3>
+    <pre id="final_answer"></pre>
 
-    <h3>Solution</h3>
-    <pre id="solution"></pre>
-
-    <h3>Code Example</h3>
-    <pre id="code_example"></pre>
+    <h3>Events</h3>
+    <pre id="events"></pre>
 
     <h3>Raw Stream</h3>
     <pre id="raw"></pre>
@@ -36,20 +33,18 @@ async function send(){
 
     const question = document.getElementById("question").value;
 
-    const typeBox = document.getElementById("type");
-    const reasonBox = document.getElementById("reason");
-    const solutionBox = document.getElementById("solution");
-    const codeExampleBox = document.getElementById("code_example");
+    const statusBox = document.getElementById("status");
+    const finalAnswerBox = document.getElementById("final_answer");
+    const eventsBox = document.getElementById("events");
     const rawBox = document.getElementById("raw");
 
-    typeBox.textContent = "";
-    reasonBox.textContent = "";
-    solutionBox.textContent = "";
-    codeExampleBox.textContent = "";
+    statusBox.textContent = "";
+    finalAnswerBox.textContent = "";
+    eventsBox.textContent = "";
     rawBox.textContent = "";
 
     const response = await fetch(
-        "http://127.0.0.1:8000/chat/stream",
+        "http://127.0.0.1:8000/agent/stream",
         {
             method:"POST",
             headers:{
@@ -71,6 +66,7 @@ async function send(){
     const decoder = new TextDecoder();
 
     let fullText = "";
+    let pendingLine = "";
 
     while(true){
 
@@ -95,31 +91,49 @@ async function send(){
         fullText += text;
         rawBox.textContent = fullText;
 
+        pendingLine += text;
+
+        const lines = pendingLine.split("\n");
+        pendingLine = lines.pop();
+
+        for(const line of lines){
+            handleAgentEvent(line);
+        }
     }
 
-    fullText += decoder.decode();
+    const tail = pendingLine + decoder.decode();
+    if(tail.trim()){
+        handleAgentEvent(tail);
+    }
+
+}
+
+function handleAgentEvent(line){
+
+    if(!line.trim()){
+        return;
+    }
+
+    const statusBox = document.getElementById("status");
+    const finalAnswerBox = document.getElementById("final_answer");
+    const eventsBox = document.getElementById("events");
 
     try{
-        const answer = JSON.parse(fullText);
+        const event = JSON.parse(line);
 
-        typeBox.textContent = answer.type || "";
-        reasonBox.textContent = answer.reason || "";
-        solutionBox.textContent = Array.isArray(answer.solution)
-            ? answer.solution.map(
-                (item, index) => `${index + 1}. ${item}`
-            ).join("\n")
-            : answer.solution || "";
-        codeExampleBox.textContent = answer.code_example || "";
-
-        rawBox.textContent = JSON.stringify(
-            answer,
+        statusBox.textContent = event.event;
+        eventsBox.textContent += JSON.stringify(
+            event,
             null,
             2
-        );
+        ) + "\n\n";
+
+        if(event.event === "final"){
+            finalAnswerBox.textContent = event.data.final_answer || "";
+        }
     }
     catch(error){
-        rawBox.textContent = fullText;
-
+        eventsBox.textContent += "Failed to parse event: " + line + "\n";
     }
 
 }

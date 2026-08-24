@@ -20,6 +20,7 @@ def review_answer(
                 "content": (
                     "你是 Reviewer，负责检查 Writer 的答案质量。"
                     "检查是否基于上下文、是否引用来源、是否有未支持的结论、是否遗漏风险。"
+                    "如果问题是实时信息问题，检查答案是否使用了 web_results。"
                     "如果答案可用，passed=true，并输出润色后的 final_answer。"
                     "如果答案有问题，passed=false，列出 issues，并给出修正后的 final_answer。"
                 )

@@ -11,6 +11,7 @@ def extract_keyword(question: str)-> str:
 def collect_context(question: str, analysis: RequestAnalysis) -> CollectedContext:
     context = CollectedContext()
     for file_path in analysis.file_paths:
+        print(f"Tool call: read_file({file_path})")
         context.files.append(
             read_file(file_path)
         )
@@ -19,6 +20,7 @@ def collect_context(question: str, analysis: RequestAnalysis) -> CollectedContex
             extract_keyword(question)
         ]
         for keyword in keywords:
+            print(f"Tool call: search_code(keyword={keyword}, directory=.)")
             code_result = search_code(
                 keyword=keyword,
                 directory="."
@@ -29,9 +31,12 @@ def collect_context(question: str, analysis: RequestAnalysis) -> CollectedContex
                     extract_keyword(question)
                 ]
         for keyword in keywords:
+            print(f"Tool call: search_logs(keyword={keyword}, directory=.)")
             log_result = search_logs(
                 keyword=keyword,
                 directory="."
             )
             context.logs.extend(log_result)
+    if not context.files and not context.code_snippets and not context.logs:
+        print("Collector: no file/code/log tools called")
     return context

@@ -13,7 +13,7 @@ class RequestAnalysis(BaseModel):
     needs_file_context: bool = Field(...,description="是否需要读取或搜索项目文件")
     needs_logs_context: bool = Field(...,description="是否需要搜索日志")
     needs_rag_context: bool = Field(...,description="是否需要搜索UE / DX 知识库")
-    
+    needs_web_search: bool = Field(False,description="是否需要联网搜索实时或公共信息")
     file_paths: List[str] = Field(
         default_factory=list, #会默认创建
         description="用户明确提到的文件路径"
@@ -29,6 +29,7 @@ class CollectedContext(BaseModel):
     logs: List[dict]= Field(default_factory=list)
     docs: List[dict] = Field(default_factory=list)
     ue_errors: List[dict] = Field(default_factory=list)
+    web_results: List[dict] = Field(default_factory=list)
 
 class DraftAnswer(BaseModel): #草稿答案(初步)
     answer: str
