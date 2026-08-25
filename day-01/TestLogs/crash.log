@@ -1,0 +1,9 @@
+Fatal error!
+
+Unhandled Exception: EXCEPTION_ACCESS_VIOLATION reading address 0x0000000000000000
+
+MyGame.exe!AMyActor::BeginPlay()
+MyGame.exe!UWorld::BeginPlay()
+UnrealEditor-Engine.dll!AActor::DispatchBeginPlay()
+
+Access violation usually means a null pointer or invalid object was accessed.

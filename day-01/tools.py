@@ -108,8 +108,6 @@ def search_ue_error(error_message: str):
         if item["error"].lower() in error_message.lower():
 
             return item
-
-
     return {
         "error": error_message,
         "reason": "No matching UE error found.",
