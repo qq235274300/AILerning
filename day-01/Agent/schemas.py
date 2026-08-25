@@ -54,3 +54,14 @@ class ReviewResult(BaseModel):
     passed: bool
     issues: List[str] = Field(default_factory=list)
     final_answer: str
+
+class PatchSuggestion(BaseModel):
+    file_path: str = Field(..., description="建议修改的文件路径")
+    issue_location: str = Field(..., description="问题所在位置，例如函数名或行号范围")
+    issue_summary: str = Field(..., description="问题总结")
+    reason: str = Field(..., description="为什么需要修改")
+    old_code: str = Field(..., description="原始代码片段")
+    new_code: str = Field(..., description="建议替换后的代码片段")
+    patch_diff: str = Field(..., description="可读 diff 文本")
+    risk: str = Field(..., description="修改风险")
+    needs_human_confirm: bool = Field(True, description="是否需要人工确认")

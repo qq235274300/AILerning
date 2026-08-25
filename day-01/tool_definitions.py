@@ -50,5 +50,14 @@ tool_definitions = [
             "description": "Search log files by keyword.",
             "parameters": SearchLogsArgs.model_json_schema()
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "read_source_file",
+            "description": "Read a source code file for analysis only. This tool never modifies files.",
+            "parameters": ReadFileArgs.model_json_schema()
+        }
     }
+
 ]

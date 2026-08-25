@@ -17,6 +17,14 @@ def read_file(path: str):
         "path": str(target),
         "content": target.read_text(encoding="utf-8",errors="ignore")
     }
+
+def read_source_file(path: str):
+    """
+    读取源码文件，只用于分析，不允许修改文件。
+    """
+    return read_file(path)
+
+
 #读文件夹内
 def list_files(directory: str):
     target = resolve_safe_path(directory)
