@@ -1,21 +1,9 @@
 # tool_definitions.py
-from models import SearchUEErrorArgs,SearchUEDocsArgs
+from models import SearchUEDocsArgs
 from models import ReadFileArgs,ListFilesArgs,SearchCodeArgs,SearchLogsArgs
 
 tool_definitions = [
-
-    {
-        "type": "function",
-        "function": {
-
-            "name": "search_ue_error",
-
-            "description":
-            "Search Unreal Engine error database. "
-            "Use this tool when user asks about UE errors.",
-            "parameters": SearchUEErrorArgs.model_json_schema()           
-        }
-    },
+    # search_ue_error 暂时不暴露给模型：当前 ue_error_db 是早期测试数据，信息量太少。
     {
     "type": "function",
     "function": {

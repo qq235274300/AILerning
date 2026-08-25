@@ -76,11 +76,11 @@ ue_error_db = [
 
         "solution":
         """
-1. Check whether the object is valid.
-2. Use IsValid() before accessing UObject.
-3. Check BeginPlay initialization order.
-4. Verify GameInstance or Actor reference.
-"""
+        1. Check whether the object is valid.
+        2. Use IsValid() before accessing UObject.
+        3. Check BeginPlay initialization order.
+        4. Verify GameInstance or Actor reference.
+        """
     },
 
 
@@ -92,10 +92,10 @@ ue_error_db = [
 
         "solution":
         """
-1. Check asset path.
-2. Verify the package exists.
-3. Check plugin mount point.
-4. Rebuild project.
+        1. Check asset path.
+        2. Verify the package exists.
+        3. Check plugin mount point.
+        4. Rebuild project.
 """
     }
 ]
@@ -114,4 +114,23 @@ def search_ue_error(error_message: str):
         "error": error_message,
         "reason": "No matching UE error found.",
         "solution": "Please provide more information."
+    }
+
+def read_log(path: str):
+    """
+    读取日志文件，只用于 Crash 分析，不修改任何文件。
+    """
+    target = resolve_safe_path(path)
+    if not target.is_file():
+        return {
+            "error": f"Log file not found: {path}"
+        }
+    text = target.read_text(
+        encoding="utf-8",
+        errors="ignore"
+    )
+    #截取最后两万字
+    return {
+        "path": str(target.relative_to(PROJECT_ROOT)),
+        "content": text[-20000:]
     }

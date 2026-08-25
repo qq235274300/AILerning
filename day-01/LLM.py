@@ -6,7 +6,7 @@ from openai_client import (
     client,
 )
 from prompt import SYSTEM_PROMPT
-from tools import search_ue_error,read_file,list_files,search_code,search_logs
+from tools import read_file,list_files,search_code,search_logs
 from RAG.retriever import search_ue_docs
 from tool_definitions import tool_definitions
 import json
@@ -14,8 +14,7 @@ import json
 def execute_tool(tool_call):
     args = json.loads(tool_call.function.arguments)
     name = tool_call.function.name
-    if name == "search_ue_error":       
-        return search_ue_error(args["error_message"] ) 
+    # search_ue_error 暂时不再执行：当前 ue_error_db 是早期 mock 数据，先避免影响回答质量。
     if name == "search_ue_docs":       
             return search_ue_docs(args["query"] )
     if name == "read_file":

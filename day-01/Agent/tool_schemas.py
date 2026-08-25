@@ -3,7 +3,6 @@ from models import (
     ListFilesArgs,
     SearchCodeArgs,
     SearchLogsArgs,
-    SearchUEErrorArgs,
     SearchUEDocsArgs,
 )
 
@@ -56,14 +55,7 @@ searcher_tool_definitions = [
     {
         "type": "function",
         "function": {
-            "name": "search_ue_error",
-            "description": "Search local Unreal Engine error examples.",
-            "parameters": SearchUEErrorArgs.model_json_schema()
-        }
-    },
-    {
-        "type": "function",
-        "function": {
+            # search_ue_error 暂时不注册：当前错误库是早期 mock 数据，先避免 Agent 把它当成可靠证据。
             "name": "search_web",
             "description": "Search the web for real-time or public information.",
             "parameters": {

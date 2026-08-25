@@ -5,6 +5,11 @@ from typing import Literal, List
 #用户shuru
 class ChatRequest(BaseModel):
     question: str
+
+# Crash 分析接口的请求体，只负责接收 crash log 文件路径。
+class CrashRequest(BaseModel):
+    path: str
+
 #LLM结构化输出
 class UEAnswer(BaseModel):
     type: Literal[

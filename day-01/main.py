@@ -1,9 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-from models import ChatRequest
+from models import ChatRequest,CrashRequest
 from LLM import chat,stream_chat
 from Agent.pipeline import run_agent,run_agent_stream
+from Agent.crash_analyzer import run_crash_agent
 
 # cd /d D:\Me\VSCodeProjects\day-01
 # python -m RAG.build_DB
@@ -49,6 +50,11 @@ async def agent_stream_api(req: ChatRequest):
         run_agent_stream(req.question),
         media_type="application/x-ndjson"
     )
+
+#检查UE Crash专用流程，Agent使用agent_stream_api
+@app.post("/crash")
+async def crash_api(req: CrashRequest):
+    return run_crash_agent(req.path)
 
 if __name__ == "__main__":
 
