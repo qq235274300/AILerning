@@ -1,6 +1,11 @@
 from pydantic import BaseModel, Field
 from typing import List,Literal,Optional
 
+
+class ToolNodeResult(BaseModel):
+    messages: List[dict] = Field(default_factory=list)
+    tool_results: List[dict] = Field(default_factory=list)
+
 class RequestAnalysis(BaseModel):
     task_type: Literal[
         "code_analysis",
