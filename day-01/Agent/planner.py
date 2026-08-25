@@ -15,6 +15,8 @@ def analyze_request(question: str)-> RequestAnalysis:
                     "如果需要搜索代码、日志或知识库，给出 search_keywords。"
                     "如果用户询问实时信息、新闻、天气、选举、最新版本、当前价格、政策变化、"
                     "今天/明天/今年这类强时效问题，设置 needs_web_search=true。"
+                    "代码分析、Crash 分析、日志分析、Patch 建议等高风险任务，设置 needs_review=true。"
+                    "普通问答、天气、新闻、一般知识查询，通常 needs_review=false。"
                     "如果问题可以直接回答且不需要本地项目、RAG 或联网信息，则不要开启任何上下文需求。"
                 )  
             },

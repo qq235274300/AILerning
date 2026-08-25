@@ -52,7 +52,9 @@ def collect_context(question: str, analysis: RequestAnalysis) -> CollectedContex
             f"Planner 分析:\n{analysis.model_dump_json(indent=2)}"
         ),
         tools=collector_tool_definitions,
-        execute_tool=execute_collector_tool
+        execute_tool=execute_collector_tool,
+        # Collector 调用工具拿到本地上下文后即可结束，避免再调用一次模型确认。
+        stop_after_tool_calls=True
     )
 
     for item in result["tool_results"]:

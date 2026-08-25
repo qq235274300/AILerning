@@ -19,6 +19,7 @@ class RequestAnalysis(BaseModel):
     needs_logs_context: bool = Field(...,description="是否需要搜索日志")
     needs_rag_context: bool = Field(...,description="是否需要搜索UE / DX 知识库")
     needs_web_search: bool = Field(False,description="是否需要联网搜索实时或公共信息")
+    needs_review: bool = Field(False,description="是否需要 Reviewer 检查答案，代码分析、Crash 分析等高风险任务应为 True")
     file_paths: List[str] = Field(
         default_factory=list, #会默认创建
         description="用户明确提到的文件路径"

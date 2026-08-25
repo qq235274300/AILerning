@@ -40,7 +40,9 @@ def search_knowledge(question: str, analysis: RequestAnalysis, context: Collecte
             f"已收集的本地上下文:\n{context.model_dump_json(indent=2)}"
         ),
         tools=searcher_tool_definitions,
-        execute_tool=execute_searcher_tool
+        execute_tool=execute_searcher_tool,
+        # Searcher 调用 RAG / Web 工具拿到知识后即可结束，避免再调用一次模型确认。
+        stop_after_tool_calls=True
     )
 
     for item in result["tool_results"]:
