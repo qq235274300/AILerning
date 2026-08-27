@@ -37,6 +37,7 @@ def create_initial_state(question: str)-> AgentState:
     """
     return{
         "user_request": question,
+        "context": CollectedContext(),
         "patch_suggestion": None,
         "review": None,
         "timings": {}

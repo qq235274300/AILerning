@@ -1,5 +1,7 @@
 from Agent.graph.state import AgentState
 from Agent.schemas import CollectedContext
+from Agent.planner import analyze_request
+from Agent.writer import generate_suggestion
 
 """
 Node = 一个普通的python函数
@@ -26,4 +28,35 @@ def initialize_context_node(state: AgentState) -> AgentState:
     return{
         "context": CollectedContext()
     }
-   
+    
+def planner_node(state: AgentState)-> AgentState:
+    """
+    Planner节点。
+    读取用户问题，调用现有analyze_request(),
+    将结构化分析结果写入analysis.
+    """
+    question = state["user_request"]
+    analysis = analyze_request(question)
+    return{
+        "analysis": analysis
+    }
+    
+def writer_node(state: AgentState) -> AgentState:
+    """
+    Write节点。
+    读取用户问题，Planner分析和已收集上下文，
+    调用现有 generate_suggestion()生成草稿.
+    """
+    question = state["user_request"]
+    analysis = state["analysis"]
+    context = state["context"]
+    
+    draft = generate_suggestion(
+        question=question,
+        analysis=analysis,
+        context=context
+    )
+    return{
+        "draft": draft
+    }
+    
