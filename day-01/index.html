@@ -1,144 +1,368 @@
 <!DOCTYPE html>
-<html>
-<body>
-
-<h2>UE Agent Assistant</h2>
-
-<textarea id="question" rows="5" cols="50">
-分析 day-01/RAG/chroma.py 这个文件有什么问题
-</textarea>
-
-<br>
-
-<button onclick="send()">发送</button>
-
-<div id="answer">
-    <h3>Agent Status</h3>
-    <pre id="status"></pre>
-
-    <h3>Final Answer</h3>
-    <pre id="final_answer"></pre>
-
-    <h3>Events</h3>
-    <pre id="events"></pre>
-
-    <h3>Raw Stream</h3>
-    <pre id="raw"></pre>
-</div>
-
-
-<script>
-
-async function send(){
-
-    const question = document.getElementById("question").value;
-
-    const statusBox = document.getElementById("status");
-    const finalAnswerBox = document.getElementById("final_answer");
-    const eventsBox = document.getElementById("events");
-    const rawBox = document.getElementById("raw");
-
-    statusBox.textContent = "";
-    finalAnswerBox.textContent = "";
-    eventsBox.textContent = "";
-    rawBox.textContent = "";
-
-    const response = await fetch(
-        "http://127.0.0.1:8000/agent/stream",
-        {
-            method:"POST",
-            headers:{
-                "Content-Type":"application/json"
-            },
-            body:JSON.stringify({
-                question:question
-            })
-        }
-    );
-
-    if(!response.ok){
-        rawBox.textContent = "Request failed: " + response.status;
-        return;
-    }
-
-    const reader = response.body.getReader();
-
-    const decoder = new TextDecoder();
-
-    let fullText = "";
-    let pendingLine = "";
-
-    while(true){
-
-        const {
-            done,
-            value
-        } = await reader.read();
-
-
-        if(done){
-            break;
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UE LangGraph Agent</title>
+    <style>
+        :root {
+            color-scheme: light;
+            font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+            color: #17202a;
+            background: #f4f6f7;
         }
 
+        * {
+            box-sizing: border-box;
+        }
 
-        const text = decoder.decode(
-            value,
-            {
-                stream:true
+        body {
+            margin: 0;
+            min-height: 100vh;
+        }
+
+        header {
+            padding: 20px clamp(20px, 5vw, 64px);
+            color: #ffffff;
+            background: #17202a;
+            border-bottom: 4px solid #16a085;
+        }
+
+        h1,
+        h2 {
+            margin: 0;
+            letter-spacing: 0;
+        }
+
+        h1 {
+            font-size: 24px;
+        }
+
+        h2 {
+            margin-bottom: 12px;
+            font-size: 16px;
+        }
+
+        main {
+            width: min(1100px, calc(100% - 32px));
+            margin: 24px auto 48px;
+        }
+
+        .input-band,
+        .result-band {
+            padding: 20px;
+            background: #ffffff;
+            border: 1px solid #d5d8dc;
+        }
+
+        .input-band {
+            margin-bottom: 16px;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 12px;
+            resize: vertical;
+            font: inherit;
+            line-height: 1.6;
+            border: 1px solid #aeb6bf;
+            border-radius: 4px;
+        }
+
+        textarea:focus {
+            outline: 2px solid #16a085;
+            outline-offset: 1px;
+        }
+
+        .actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        button {
+            min-width: 92px;
+            height: 38px;
+            padding: 0 16px;
+            color: #ffffff;
+            font: inherit;
+            font-weight: 600;
+            background: #117864;
+            border: 0;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:disabled {
+            cursor: wait;
+            opacity: 0.55;
+        }
+
+        #status {
+            color: #566573;
+            font-size: 14px;
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
+            gap: 24px;
+        }
+
+        .section + .section {
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7e9;
+        }
+
+        pre {
+            min-height: 36px;
+            margin: 0;
+            overflow-wrap: anywhere;
+            white-space: pre-wrap;
+            font-family: Consolas, "Microsoft YaHei", monospace;
+            font-size: 14px;
+            line-height: 1.65;
+        }
+
+        #execution_path {
+            color: #117864;
+            font-weight: 600;
+        }
+
+        details {
+            margin-top: 24px;
+            padding-top: 16px;
+            border-top: 1px solid #e5e7e9;
+        }
+
+        summary {
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        #events {
+            max-height: 320px;
+            margin-top: 12px;
+            overflow: auto;
+            color: #566573;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 760px) {
+            .result-grid {
+                grid-template-columns: 1fr;
             }
-        );
 
-        fullText += text;
-        rawBox.textContent = fullText;
-
-        pendingLine += text;
-
-        const lines = pendingLine.split("\n");
-        pendingLine = lines.pop();
-
-        for(const line of lines){
-            handleAgentEvent(line);
+            main {
+                width: min(100% - 20px, 1100px);
+                margin-top: 10px;
+            }
         }
-    }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>UE LangGraph Agent</h1>
+    </header>
 
-    const tail = pendingLine + decoder.decode();
-    if(tail.trim()){
-        handleAgentEvent(tail);
-    }
+    <main>
+        <section class="input-band">
+            <h2>问题</h2>
+            <textarea id="question">分析 day-01/TestLogs/buggy_texture_loader.py，并给出 Patch 建议</textarea>
+            <div class="actions">
+                <button id="send_button" type="button">发送</button>
+                <span id="status">等待输入</span>
+            </div>
+        </section>
 
-}
+        <section class="result-band">
+            <div class="result-grid">
+                <div>
+                    <div class="section">
+                        <h2>最终答案</h2>
+                        <pre id="final_answer">尚未运行</pre>
+                    </div>
 
-function handleAgentEvent(line){
+                    <div id="patch_section" class="section hidden">
+                        <h2>Patch 建议</h2>
+                        <pre id="patch_suggestion"></pre>
+                    </div>
+                </div>
 
-    if(!line.trim()){
-        return;
-    }
+                <aside>
+                    <div class="section">
+                        <h2>执行路径</h2>
+                        <pre id="execution_path">尚未运行</pre>
+                    </div>
 
-    const statusBox = document.getElementById("status");
-    const finalAnswerBox = document.getElementById("final_answer");
-    const eventsBox = document.getElementById("events");
+                    <div class="section">
+                        <h2>耗时</h2>
+                        <pre id="timings">-</pre>
+                    </div>
 
-    try{
-        const event = JSON.parse(line);
+                    <div id="review_section" class="section hidden">
+                        <h2>Reviewer</h2>
+                        <pre id="review"></pre>
+                    </div>
+                </aside>
+            </div>
 
-        statusBox.textContent = event.event;
-        eventsBox.textContent += JSON.stringify(
-            event,
-            null,
-            2
-        ) + "\n\n";
+            <details>
+                <summary>节点事件</summary>
+                <pre id="events"></pre>
+            </details>
+        </section>
+    </main>
 
-        if(event.event === "final"){
-            finalAnswerBox.textContent = event.data.final_answer || "";
+    <script>
+        const API_URL = "http://127.0.0.1:8000/agent/graph/stream";
+
+        const EVENT_LABELS = {
+            graph_start: "图开始",
+            planner_done: "Planner 完成",
+            collector_done: "Collector 完成",
+            searcher_done: "Searcher 完成",
+            writer_done: "Writer 完成",
+            patcher_done: "Patcher 完成",
+            reviewer_done: "Reviewer 完成",
+            final_done: "Final 节点完成",
+            final: "全部完成"
+        };
+
+        const sendButton = document.getElementById("send_button");
+        const statusBox = document.getElementById("status");
+        const pathBox = document.getElementById("execution_path");
+        const finalAnswerBox = document.getElementById("final_answer");
+        const patchSection = document.getElementById("patch_section");
+        const patchBox = document.getElementById("patch_suggestion");
+        const reviewSection = document.getElementById("review_section");
+        const reviewBox = document.getElementById("review");
+        const timingsBox = document.getElementById("timings");
+        const eventsBox = document.getElementById("events");
+
+        let executionPath = [];
+
+        sendButton.addEventListener("click", sendQuestion);
+
+        function resetView() {
+            executionPath = [];
+            pathBox.textContent = "准备启动";
+            finalAnswerBox.textContent = "等待 Agent 输出";
+            timingsBox.textContent = "运行中";
+            eventsBox.textContent = "";
+            patchBox.textContent = "";
+            reviewBox.textContent = "";
+            patchSection.classList.add("hidden");
+            reviewSection.classList.add("hidden");
         }
-    }
-    catch(error){
-        eventsBox.textContent += "Failed to parse event: " + line + "\n";
-    }
 
-}
+        async function sendQuestion() {
+            const question = document.getElementById("question").value.trim();
 
-</script>
+            if (!question) {
+                statusBox.textContent = "请输入问题";
+                return;
+            }
 
+            resetView();
+            sendButton.disabled = true;
+            statusBox.textContent = "正在连接";
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ question })
+                });
+
+                if (!response.ok || !response.body) {
+                    throw new Error(`请求失败: HTTP ${response.status}`);
+                }
+
+                await readNdjsonStream(response.body);
+            } catch (error) {
+                statusBox.textContent = error.message;
+                finalAnswerBox.textContent = "请求未完成";
+            } finally {
+                sendButton.disabled = false;
+            }
+        }
+
+        async function readNdjsonStream(body) {
+            const reader = body.getReader();
+            const decoder = new TextDecoder();
+            let pendingLine = "";
+
+            while (true) {
+                const { done, value } = await reader.read();
+
+                if (done) {
+                    break;
+                }
+
+                pendingLine += decoder.decode(value, { stream: true });
+                const lines = pendingLine.split("\n");
+                pendingLine = lines.pop();
+
+                for (const line of lines) {
+                    handleAgentEvent(line);
+                }
+            }
+
+            const tail = pendingLine + decoder.decode();
+            if (tail.trim()) {
+                handleAgentEvent(tail);
+            }
+        }
+
+        function handleAgentEvent(line) {
+            if (!line.trim()) {
+                return;
+            }
+
+            try {
+                const message = JSON.parse(line);
+                const eventName = message.event;
+                const eventData = message.data || {};
+
+                statusBox.textContent = EVENT_LABELS[eventName] || eventName;
+                eventsBox.textContent += `${JSON.stringify(message, null, 2)}\n\n`;
+
+                if (eventName.endsWith("_done")) {
+                    executionPath.push(eventName.replace("_done", ""));
+                    pathBox.textContent = executionPath.join(" → ");
+                }
+
+                if (eventName === "final") {
+                    renderFinalResult(eventData);
+                }
+            } catch (error) {
+                eventsBox.textContent += `无法解析事件: ${line}\n`;
+            }
+        }
+
+        function renderFinalResult(result) {
+            finalAnswerBox.textContent = result.final_answer || "没有返回最终答案";
+            timingsBox.textContent = JSON.stringify(result.timings || {}, null, 2);
+
+            if (result.patch_suggestion) {
+                patchSection.classList.remove("hidden");
+                patchBox.textContent = JSON.stringify(result.patch_suggestion, null, 2);
+            }
+
+            if (result.review) {
+                reviewSection.classList.remove("hidden");
+                reviewBox.textContent = JSON.stringify(result.review, null, 2);
+            }
+        }
+    </script>
 </body>
 </html>

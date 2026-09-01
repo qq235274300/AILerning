@@ -41,14 +41,24 @@ def should_review_answer(state: AgentState) -> bool:
     """
     return state["analysis"].needs_review
 
-def route_after_planner(state: AgentState) -> Literal["collector", "searcher", "writer"] :
+def route_after_planner(
+    state: AgentState
+) -> Literal["tool_model", "writer"]:
     """
-    Planner完成后决定下一个节点。
+    Planner 只做粗粒度判断。
+
+    需要外部上下文：
+        进入 Tool Calling 循环。
+
+    普通问题：
+        直接交给 Writer。
     """
-    if should_collect_context(state):
-        return "collector"
-    if should_search_knowledge(state):
-         return "searcher"
+    if (
+        should_collect_context(state)
+        or should_search_knowledge(state)
+    ):
+        return "tool_model"
+
     return "writer"
 
 def route_after_collector(state: AgentState) -> Literal["searcher", "writer"] :

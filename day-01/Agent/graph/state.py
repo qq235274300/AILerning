@@ -1,4 +1,6 @@
 from typing import TypedDict
+from langgraph.graph import MessagesState
+from langchain_core.messages import HumanMessage
 from Agent.schemas import(
     RequestAnalysis,
     CollectedContext,
@@ -7,11 +9,12 @@ from Agent.schemas import(
     ReviewResult
 )
 
-class AgentState(TypedDict,total = False):
+class AgentState(MessagesState,total = False):
     """
     LangGraph 所有节点共享的状态.
-    total = False 表示这些字段不需要在创建State时一次性全部提供,
-    后续节点可以逐步把处理结果写入State.
+    MessagesState 提供：
+        messages: list[AnyMessage]
+    其他字段保存项目自己的业务状态。
     """
     #本次用户提交的问题
     user_request : str
@@ -35,8 +38,13 @@ def create_initial_state(question: str)-> AgentState:
     """
     根据用户提问创建一次新的Agent初始状态
     """
+    question = question.strip()
     return{
         "user_request": question,
+        #tool Calling使用的消息历史
+        "messages": [
+            HumanMessage(content= question)
+        ],
         "context": CollectedContext(),
         "patch_suggestion": None,
         "review": None,

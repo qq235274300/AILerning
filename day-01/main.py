@@ -5,6 +5,11 @@ from models import ChatRequest,CrashRequest
 from LLM import chat,stream_chat
 from Agent.pipeline import run_agent,run_agent_stream
 from Agent.crash_analyzer import run_crash_agent
+from Agent.graph.service import (
+    run_agent_graph,
+    run_agent_graph_stream,
+)
+
 
 # cd /d D:\Me\VSCodeProjects\day-01
 # python -m RAG.build_DB
@@ -55,6 +60,31 @@ async def agent_stream_api(req: ChatRequest):
 @app.post("/crash")
 async def crash_api(req: CrashRequest):
     return run_crash_agent(req.path)
+
+@app.post("/agent/graph")
+def agent_graph_api(req: ChatRequest):
+    """
+    LangGraph 同步接口。
+
+    等待整张图执行完成后，一次性返回最终结果。
+    """
+
+    return run_agent_graph(
+        req.question
+    )
+    
+@app.post("/agent/graph/stream")
+def agent_graph_stream_api(req: ChatRequest):
+    """
+    LangGraph 节点级流式接口。
+    """
+
+    return StreamingResponse(
+        run_agent_graph_stream(
+            req.question
+        ),
+        media_type="application/x-ndjson"
+    )
 
 if __name__ == "__main__":
 
