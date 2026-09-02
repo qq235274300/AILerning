@@ -100,6 +100,11 @@
             opacity: 0.55;
         }
 
+        .secondary-button {
+            color: #1f2933;
+            background: #e8ecef;
+        }
+
         #status {
             color: #566573;
             font-size: 14px;
@@ -177,6 +182,7 @@
             <textarea id="question">分析 day-01/TestLogs/buggy_texture_loader.py，并给出 Patch 建议</textarea>
             <div class="actions">
                 <button id="send_button" type="button">发送</button>
+                <button id="new_thread_button" class="secondary-button" type="button">新会话</button>
                 <span id="status">等待输入</span>
             </div>
         </section>
@@ -222,12 +228,35 @@
 
     <script>
         const API_URL = "http://127.0.0.1:8000/agent/graph/stream";
+        const THREAD_ID_KEY = "ue_agent_thread_id";
+
+        function createThreadId() {
+            if (crypto.randomUUID) {
+                return crypto.randomUUID();
+            }
+
+            return `thread-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        }
+
+        function loadThreadId() {
+            let savedThreadId = localStorage.getItem(THREAD_ID_KEY);
+
+            if (!savedThreadId) {
+                savedThreadId = createThreadId();
+                localStorage.setItem(THREAD_ID_KEY, savedThreadId);
+            }
+
+            return savedThreadId;
+        }
+
+        let threadId = loadThreadId();
 
         const EVENT_LABELS = {
             graph_start: "图开始",
             planner_done: "Planner 完成",
-            collector_done: "Collector 完成",
-            searcher_done: "Searcher 完成",
+            tool_model_done: "工具决策完成",
+            tools_done: "工具执行完成",
+            build_context_done: "上下文整理完成",
             writer_done: "Writer 完成",
             patcher_done: "Patcher 完成",
             reviewer_done: "Reviewer 完成",
@@ -236,6 +265,7 @@
         };
 
         const sendButton = document.getElementById("send_button");
+        const newThreadButton = document.getElementById("new_thread_button");
         const statusBox = document.getElementById("status");
         const pathBox = document.getElementById("execution_path");
         const finalAnswerBox = document.getElementById("final_answer");
@@ -249,6 +279,14 @@
         let executionPath = [];
 
         sendButton.addEventListener("click", sendQuestion);
+        newThreadButton.addEventListener("click", startNewThread);
+
+        function startNewThread() {
+            threadId = createThreadId();
+            localStorage.setItem(THREAD_ID_KEY, threadId);
+            resetView();
+            statusBox.textContent = "已开始新会话";
+        }
 
         function resetView() {
             executionPath = [];
@@ -272,6 +310,7 @@
 
             resetView();
             sendButton.disabled = true;
+            newThreadButton.disabled = true;
             statusBox.textContent = "正在连接";
 
             try {
@@ -280,7 +319,10 @@
                     headers: {
                         "Content-Type": "application/json"
                     },
-                    body: JSON.stringify({ question })
+                    body: JSON.stringify({
+                        question,
+                        thread_id: threadId
+                    })
                 });
 
                 if (!response.ok || !response.body) {
@@ -293,6 +335,7 @@
                 finalAnswerBox.textContent = "请求未完成";
             } finally {
                 sendButton.disabled = false;
+                newThreadButton.disabled = false;
             }
         }
 

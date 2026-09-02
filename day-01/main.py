@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-from models import ChatRequest,CrashRequest
 from LLM import chat,stream_chat
 from Agent.pipeline import run_agent,run_agent_stream
 from Agent.crash_analyzer import run_crash_agent
@@ -9,7 +8,11 @@ from Agent.graph.service import (
     run_agent_graph,
     run_agent_graph_stream,
 )
-
+from models import (
+    AgentRequest,
+    ChatRequest,
+    CrashRequest,
+)
 
 # cd /d D:\Me\VSCodeProjects\day-01
 # python -m RAG.build_DB
@@ -62,7 +65,7 @@ async def crash_api(req: CrashRequest):
     return run_crash_agent(req.path)
 
 @app.post("/agent/graph")
-def agent_graph_api(req: ChatRequest):
+def agent_graph_api(req: AgentRequest):
     """
     LangGraph 同步接口。
 
@@ -70,18 +73,20 @@ def agent_graph_api(req: ChatRequest):
     """
 
     return run_agent_graph(
-        req.question
+        req.question,
+        req.thread_id
     )
     
 @app.post("/agent/graph/stream")
-def agent_graph_stream_api(req: ChatRequest):
+def agent_graph_stream_api(req: AgentRequest):
     """
     LangGraph 节点级流式接口。
     """
 
     return StreamingResponse(
         run_agent_graph_stream(
-            req.question
+            req.question,
+            req.thread_id
         ),
         media_type="application/x-ndjson"
     )

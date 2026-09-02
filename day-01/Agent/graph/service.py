@@ -68,23 +68,41 @@ def build_result(
         }
     }
 
-def run_agent_graph(question: str) -> dict:
+
+def build_graph_config(thread_id: str):
+    """创建 Checkpointer 定位会话所需的运行配置。"""
+    return {
+        "configurable": {
+            "thread_id": thread_id
+        },
+        "recursion_limit": 10
+    }
+
+
+def run_agent_graph(
+    question: str,
+    thread_id: str
+) -> dict:
     """
     同步执行整张图，完成后一次性返回。
     """
     total_start = time.perf_counter()
-    
+    config = build_graph_config(thread_id)
+
     final_state = agent_graph.invoke(
-        create_initial_state(question)
+        create_initial_state(question),
+        config=config
     )
     total_seconds = round(
         time.perf_counter() - total_start,
         3
     )
-    return build_result(
+    result = build_result(
         final_state,
         total_seconds
     )
+    result["thread_id"] = thread_id
+    return result
 
 def stream_event(event: str, data) -> str:
     """
@@ -100,46 +118,48 @@ def stream_event(event: str, data) -> str:
         ensure_ascii=False
     )+ "\n"
 
-def run_agent_graph_stream(question: str):
+def run_agent_graph_stream(
+    question: str,
+    thread_id: str
+):
     """
     节点流式执行LangGraph。
     每完成一个节点，就产生一条JSON事件。
     """
     total_start = time.perf_counter()
 
-    current_state = create_initial_state(
-        question
-    )
-    
     yield stream_event(
         "graph_start",
         {
-            "user_request": question
+            "user_request": question,
+            "thread_id": thread_id
         }
     )
     
+    config = build_graph_config(thread_id)
+    
     for graph_update in agent_graph.stream(
-        current_state,
+        create_initial_state(question),
+        config=config,
         stream_mode="updates"
     ):
         for node_name,node_update in graph_update.items():
-            if node_update:
-                # 当前图是顺序图，可以用 update 模拟 LangGraph 的状态合并。
-                current_state.update(node_update)
             yield stream_event(
                 f"{node_name}_done",
                 node_update or {}
             )
 
+    snapshot = agent_graph.get_state(config)
     total_seconds = round(
         time.perf_counter() - total_start,
         3
     )
 
     final_result = build_result(
-        current_state,
+        snapshot.values,
         total_seconds
     )
+    final_result["thread_id"] = thread_id
 
     yield stream_event(
         "final",
@@ -148,7 +168,8 @@ def run_agent_graph_stream(question: str):
 
 if __name__ == "__main__":
     for event_text in run_agent_graph_stream(
-        "什么是 Python 列表？"
+        "什么是 Python 列表？",
+        "service-demo"
     ):
         print(
             event_text,

@@ -7,6 +7,11 @@ from Agent.graph.state import AgentState
 from Agent.schemas import CollectedContext
 from Agent.tools.tool_nodes import ALL_TOOLS
 from openai_client import CHAT_MODEL
+from Agent.graph.message_utils import (
+    find_current_turn_start,
+    format_conversation_history,
+    get_current_turn_messages,
+)
 
 
 model = ChatOpenAI(
@@ -19,10 +24,12 @@ def tool_model_node(state: AgentState) -> AgentState:
     """
     让模型根据 Planner 结果决定具体调用哪个工具。
     """
+    history = format_conversation_history(state["messages"])
     analysis = state["analysis"]
     system_prompt = f"""
     你是 Agent 的工具调度节点，只负责收集回答问题所需的上下文。
-
+    历史对话：
+    {history or "无"}
     Planner 分析：
     {analysis.model_dump_json(indent=2)}
 
@@ -45,7 +52,7 @@ def tool_model_node(state: AgentState) -> AgentState:
     response = model_with_tools.invoke(
         [
             SystemMessage(content=system_prompt),
-            *state["messages"],
+            *get_current_turn_messages(state["messages"]),
         ]
     )
     if response.tool_calls:
@@ -91,7 +98,10 @@ def build_context_node(state: AgentState) -> AgentState:
     """
     context = CollectedContext()
 
-    for message in state["messages"]:
+    messages = state["messages"]
+    current_start = find_current_turn_start(messages)
+    
+    for message in messages[current_start + 1:]:
         if not isinstance(message, ToolMessage):
             continue
 

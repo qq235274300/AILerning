@@ -1,4 +1,3 @@
-from typing import TypedDict
 from langgraph.graph import MessagesState
 from langchain_core.messages import HumanMessage
 from Agent.schemas import(
@@ -48,6 +47,7 @@ def create_initial_state(question: str)-> AgentState:
         "context": CollectedContext(),
         "patch_suggestion": None,
         "review": None,
+        "final_answer": "",
         "timings": {}
     }
     

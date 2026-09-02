@@ -77,3 +77,11 @@ class SearchUEDocsArgs(BaseModel):
     query: str = Field(
         ...,description="he Unreal Engine topic or API question to search for"
     )
+
+class AgentRequest(BaseModel):
+    question: str
+    thread_id: str = Field(
+        ...,
+        min_length=1,
+        max_length=100
+    )

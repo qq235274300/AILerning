@@ -16,9 +16,12 @@ from Agent.graph.nodes import (
 )
 from Agent.graph.routing import (
     route_after_planner,
-    route_after_collector,
     route_after_writer,
 )
+from langgraph.checkpoint.memory import InMemorySaver
+
+
+checkpointer = InMemorySaver()
 
 def build_agent_graph():
     builder = StateGraph(AgentState)
@@ -74,6 +77,8 @@ def build_agent_graph():
     builder.add_edge("reviewer", "final")
     builder.add_edge("final", END)
 
-    return builder.compile()
+    return builder.compile(
+        checkpointer=checkpointer
+    )
 
 agent_graph = build_agent_graph()
