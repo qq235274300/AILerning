@@ -7,6 +7,7 @@ from Agent.patcher import propose_patch
 from Agent.reviewer import review_answer
 from Agent.writer import generate_suggestion
 from langchain_core.messages import AIMessage
+from langgraph.types import interrupt
 from Agent.graph.message_utils import (
     format_conversation_history,
 )
@@ -56,6 +57,40 @@ def writer_node(state: AgentState) -> AgentState:
     return{
         "draft": draft
     }
+    
+def approval_node(state: AgentState)-> AgentState:
+    """
+    展示PatchSuggestion 并暂停Graph, 等待用户决定
+    """
+    print("LangGraph node: approval")
+    patch = state["patch_suggestion"]
+    #interrupt参数必须被Json序列化
+    human_response = interrupt(
+        {
+            "type": "patch_approval",
+            "message": "请确认是否接受这份 Patch 建议。确认后继续审查，不会修改文件。",
+            "patch_suggestion": patch.model_dump(),
+            "allowed_decisions": [
+                "approve",
+                "reject"
+            ]
+        }
+    )
+    decision = human_response["decision"]
+    feedback = human_response.get("feedback","")
+    
+    if decision not in {"approve","reject"}:
+        raise ValueError(f"Unsupported approval decision: {decision}")
+    
+    return {
+        "approval_status": (
+            "approved"
+            if decision == "approve"
+            else "rejected"
+        ),
+        "approval_feedback": feedback
+    }
+    
     
 def collector_node(state: AgentState) -> AgentState:
     """
@@ -122,12 +157,23 @@ def final_node(state: AgentState) -> AgentState:
     该节点不调用OpenAI。
     """
     print("LangGraph node: final")
-    review = state.get("review")
-    if review is not None:
-        final_answer = review.final_answer
+    if state.get("approval_status") == "rejected":
+        feedback = state.get("approval_feedback", "")
+
+        final_answer = (
+            f"{state['draft'].answer}\n\n"
+            "Patch 建议已被用户拒绝，没有修改任何文件。"
+        )
+
+        if feedback:
+            final_answer += f"\n拒绝原因：{feedback}"
+    
+    elif state.get("review") is not None:
+        final_answer = state["review"].final_answer
+
     else:
         final_answer = state["draft"].answer
-    
+
     return {
         "final_answer": final_answer,
         "messages": [

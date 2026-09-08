@@ -78,3 +78,15 @@ def route_after_writer(state: AgentState) -> Literal["patcher","reviewer","final
     if should_review_answer(state):
         return "reviewer"
     return "final"
+
+def route_after_approval(
+    state: AgentState
+)-> Literal["reviewer","final"]:
+    """
+    用户接受Patch后进入Reviewer;
+    用户拒绝后直接生成最终结果。
+    """
+    if state["approval_status"] == "approved":
+        return "reviewer"
+    return "final"
+    

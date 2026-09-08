@@ -1,3 +1,4 @@
+from typing import Literal
 from langgraph.graph import MessagesState
 from langchain_core.messages import HumanMessage
 from Agent.schemas import(
@@ -25,6 +26,10 @@ class AgentState(MessagesState,total = False):
     draft : DraftAnswer
     #Patcher 生成的修改建议，普通问题可能没有Patch
     patch_suggestion: PatchSuggestion | None
+    #Patch 等待人工确认，已确认或已拒绝
+    approval_status: Literal["approved","rejected"] | None
+    #用户明确拒绝或确认时附带的说明
+    approval_feedback : str
     #Reviewer的检查结果 普通问题会跳过Reviewer
     review: ReviewResult | None
     #最终返回用户的答案
@@ -46,6 +51,8 @@ def create_initial_state(question: str)-> AgentState:
         ],
         "context": CollectedContext(),
         "patch_suggestion": None,
+        "approval_status": None,
+        "approval_feedback": "",
         "review": None,
         "final_answer": "",
         "timings": {}

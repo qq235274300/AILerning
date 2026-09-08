@@ -77,6 +77,7 @@
 
         .actions {
             display: flex;
+            flex-wrap: wrap;
             align-items: center;
             gap: 12px;
             margin-top: 12px;
@@ -198,6 +199,15 @@
                     <div id="patch_section" class="section hidden">
                         <h2>Patch 建议</h2>
                         <pre id="patch_suggestion"></pre>
+                        <div id="approval_controls" class="hidden">
+                            <p>接受后继续审查，不会修改项目文件。</p>
+                            <label for="approval_feedback">反馈（可选）</label>
+                            <textarea id="approval_feedback"></textarea>
+                            <div class="actions">
+                                <button id="approve_button" type="button">接受并审查</button>
+                                <button id="reject_button" class="secondary-button" type="button">拒绝建议</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -228,6 +238,7 @@
 
     <script>
         const API_URL = "http://127.0.0.1:8000/agent/graph/stream";
+        const RESUME_URL = "http://127.0.0.1:8000/agent/graph/resume";
         const THREAD_ID_KEY = "ue_agent_thread_id";
 
         function createThreadId() {
@@ -259,6 +270,9 @@
             build_context_done: "上下文整理完成",
             writer_done: "Writer 完成",
             patcher_done: "Patcher 完成",
+            approval_required: "等待人工确认",
+            graph_resumed: "正在恢复流程",
+            approval_done: "决定已记录",
             reviewer_done: "Reviewer 完成",
             final_done: "Final 节点完成",
             final: "全部完成"
@@ -275,8 +289,48 @@
         const reviewBox = document.getElementById("review");
         const timingsBox = document.getElementById("timings");
         const eventsBox = document.getElementById("events");
+        const approvalControls = document.getElementById("approval_controls");
+        const feedbackBox = document.getElementById("approval_feedback");
+        const approveButton = document.getElementById("approve_button");
+        const rejectButton = document.getElementById("reject_button");
 
         let executionPath = [];
+        let pendingApproval = false;
+        let busy = false;
+        let terminalEvent = false;
+
+        function updateButtons() {
+            sendButton.disabled = busy || pendingApproval;
+            newThreadButton.disabled = busy;
+            approveButton.disabled = busy || !pendingApproval;
+            rejectButton.disabled = busy || !pendingApproval;
+        }
+
+        approveButton.addEventListener("click", () => resumeGraph("approve"));
+        rejectButton.addEventListener("click", () => resumeGraph("reject"));
+
+        async function resumeGraph(decision) {
+            if (busy || !pendingApproval) return;
+            busy = true;
+            terminalEvent = false;
+            updateButtons();
+            statusBox.textContent = "正在提交决定";
+            try {
+                const response = await fetch(RESUME_URL, {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({thread_id: threadId, decision, feedback: feedbackBox.value.trim()})
+                });
+                if (!response.ok || !response.body) throw new Error(`请求失败: HTTP ${response.status}`);
+                await readNdjsonStream(response.body);
+                if (!terminalEvent) throw new Error("连接提前结束，请检查任务状态");
+            } catch (error) {
+                statusBox.textContent = error.message;
+            } finally {
+                busy = false;
+                updateButtons();
+            }
+        }
 
         sendButton.addEventListener("click", sendQuestion);
         newThreadButton.addEventListener("click", startNewThread);
@@ -289,6 +343,10 @@
         }
 
         function resetView() {
+            pendingApproval = false;
+            terminalEvent = false;
+            approvalControls.classList.add("hidden");
+            feedbackBox.value = "";
             executionPath = [];
             pathBox.textContent = "准备启动";
             finalAnswerBox.textContent = "等待 Agent 输出";
@@ -298,9 +356,11 @@
             reviewBox.textContent = "";
             patchSection.classList.add("hidden");
             reviewSection.classList.add("hidden");
+            updateButtons();
         }
 
         async function sendQuestion() {
+            if (busy || pendingApproval) return;
             const question = document.getElementById("question").value.trim();
 
             if (!question) {
@@ -309,8 +369,8 @@
             }
 
             resetView();
-            sendButton.disabled = true;
-            newThreadButton.disabled = true;
+            busy = true;
+            updateButtons();
             statusBox.textContent = "正在连接";
 
             try {
@@ -330,12 +390,13 @@
                 }
 
                 await readNdjsonStream(response.body);
+                if (!terminalEvent) throw new Error("连接提前结束，请重试");
             } catch (error) {
                 statusBox.textContent = error.message;
                 finalAnswerBox.textContent = "请求未完成";
             } finally {
-                sendButton.disabled = false;
-                newThreadButton.disabled = false;
+                busy = false;
+                updateButtons();
             }
         }
 
@@ -379,12 +440,39 @@
                 statusBox.textContent = EVENT_LABELS[eventName] || eventName;
                 eventsBox.textContent += `${JSON.stringify(message, null, 2)}\n\n`;
 
+                if (eventName === "approval_required") {
+                    const payload = eventData.interrupts?.[0]?.value;
+                    if (!payload?.patch_suggestion) throw new Error("审批事件缺少 Patch");
+                    terminalEvent = true;
+                    pendingApproval = true;
+                    patchSection.classList.remove("hidden");
+                    approvalControls.classList.remove("hidden");
+                    patchBox.textContent = JSON.stringify(payload.patch_suggestion, null, 2);
+                    finalAnswerBox.textContent = "等待你接受或拒绝 Patch 建议。";
+                    timingsBox.textContent = "已暂停";
+                    updateButtons();
+                }
+
+                if (eventName === "resume_error" || eventName === "graph_error") {
+                    terminalEvent = true;
+                    statusBox.textContent = eventData.message || "运行失败";
+                    if (eventName === "resume_error") {
+                        pendingApproval = false;
+                        approvalControls.classList.add("hidden");
+                    }
+                    updateButtons();
+                }
+
                 if (eventName.endsWith("_done")) {
                     executionPath.push(eventName.replace("_done", ""));
                     pathBox.textContent = executionPath.join(" → ");
                 }
 
                 if (eventName === "final") {
+                    terminalEvent = true;
+                    pendingApproval = false;
+                    approvalControls.classList.add("hidden");
+                    updateButtons();
                     renderFinalResult(eventData);
                 }
             } catch (error) {

@@ -67,6 +67,18 @@ class ReviewResult(BaseModel):
     issues: List[str]
     revised_answer: UEAnswer | None = None
 
+class PatchApprovalRequest(BaseModel):
+    thread_id: str = Field(
+        ...,
+        min_length=1,
+        max_length=100
+    )
+    decision: Literal[
+        "approve",
+        "reject"
+    ]
+    feedback: str = ""
+
 
 #tool_call
 class SearchUEErrorArgs(BaseModel):

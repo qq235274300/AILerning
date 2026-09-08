@@ -8,6 +8,7 @@ from Agent.graph.tool_agent import (
 from Agent.tools.tool_nodes import all_tools_node
 from Agent.graph.state import AgentState
 from Agent.graph.nodes import (
+    approval_node,
     planner_node,
     writer_node,
     patcher_node,
@@ -15,6 +16,7 @@ from Agent.graph.nodes import (
     final_node,
 )
 from Agent.graph.routing import (
+    route_after_approval,
     route_after_planner,
     route_after_writer,
 )
@@ -32,6 +34,7 @@ def build_agent_graph():
     builder.add_node("build_context", build_context_node)
     builder.add_node("writer", writer_node)
     builder.add_node("patcher", patcher_node)
+    builder.add_node("approval", approval_node)
     builder.add_node("reviewer", reviewer_node)
     builder.add_node("final", final_node)
 
@@ -73,7 +76,16 @@ def build_agent_graph():
         },
     )
 
-    builder.add_edge("patcher", "reviewer")
+    builder.add_edge("patcher", "approval")
+
+    builder.add_conditional_edges(
+        "approval",
+        route_after_approval,
+        {
+            "reviewer": "reviewer",
+            "final": "final"
+        }
+    )
     builder.add_edge("reviewer", "final")
     builder.add_edge("final", END)
 

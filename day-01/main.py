@@ -7,11 +7,13 @@ from Agent.crash_analyzer import run_crash_agent
 from Agent.graph.service import (
     run_agent_graph,
     run_agent_graph_stream,
+    resume_agent_graph_stream,
 )
 from models import (
     AgentRequest,
     ChatRequest,
     CrashRequest,
+    PatchApprovalRequest,
 )
 
 # cd /d D:\Me\VSCodeProjects\day-01
@@ -87,6 +89,20 @@ def agent_graph_stream_api(req: AgentRequest):
         run_agent_graph_stream(
             req.question,
             req.thread_id
+        ),
+        media_type="application/x-ndjson"
+    )
+
+#分析 day-01/TestLogs/buggy_texture_loader.py，并生成 Patch 建议
+@app.post("/agent/graph/resume")
+def agent_graph_resume_api(
+    req: PatchApprovalRequest
+):
+    return StreamingResponse(
+        resume_agent_graph_stream(
+            thread_id=req.thread_id,
+            decision=req.decision,
+            feedback=req.feedback
         ),
         media_type="application/x-ndjson"
     )
