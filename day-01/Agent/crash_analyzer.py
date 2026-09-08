@@ -1,10 +1,8 @@
 from pydantic import BaseModel, Field
 from openai_client import client, CHAT_MODEL
-from RAG.retriever import search_ue_docs
 from Agent.schemas import CrashReport
-from tools import read_log
 
-#检查UE Crash专用流程
+# 仅保留子图复用的模型业务函数，流程编排统一放在 graph/crash 中。
 
 class ErrorSummary(BaseModel):
     crash_type: str = Field(..., description="Crash 类型")
@@ -33,16 +31,6 @@ def extract_error_summary(log_text: str) -> ErrorSummary:
         response_format= ErrorSummary   
     )
     return response.choices[0].message.parsed
-
-def collect_crash_knowledge(error_summary: ErrorSummary):
-    # 暂时不使用 search_ue_error：当前错误库只是早期 mock 数据，内容太少，容易误导 Crash 分析。
-    docs_result = search_ue_docs(
-        "".join(error_summary.keywords)
-    )
-    return {
-        "docs_result": docs_result
-    }
-
 def generate_crash_report(
     log_path: str,
     error_summary: ErrorSummary,
@@ -72,29 +60,3 @@ def generate_crash_report(
         response_format=CrashReport
     )
     return response.choices[0].message.parsed
-
-def run_crash_agent(log_path: str) -> CrashReport:
-    log_result = read_log(log_path)
-
-    if "error" in log_result:
-        return CrashReport(
-            crash_type="unknown",
-            summary=log_result["error"],
-            error_message="",
-            possible_causes=[],
-            evidence=[],
-            recommended_fixes=[],
-            references=[]
-        )
-
-    error_summary = extract_error_summary(log_result["content"])
-
-    knowledge = collect_crash_knowledge(error_summary)
-
-    report = generate_crash_report(
-        log_path=log_path,
-        error_summary=error_summary,
-        knowledge=knowledge
-    )
-
-    return report

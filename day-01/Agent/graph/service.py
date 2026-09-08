@@ -25,6 +25,8 @@ def build_result(final_state: dict, total_seconds: float) -> dict:
         for key in (
             "analysis", "context", "draft", "patch_suggestion", "review",
             "approval_status", "approval_feedback",
+            # 保留结构化报告，前端也可继续显示 final_answer 中的 JSON 文本。
+            "crash_report",
         )
     }
     result["final_answer"] = final_state.get("final_answer", "")

@@ -43,7 +43,7 @@ def should_review_answer(state: AgentState) -> bool:
 
 def route_after_planner(
     state: AgentState
-) -> Literal["tool_model", "writer"]:
+) -> Literal["crash_analysis", "tool_model", "writer"]:
     """
     Planner 只做粗粒度判断。
 
@@ -53,20 +53,15 @@ def route_after_planner(
     普通问题：
         直接交给 Writer。
     """
+    # Crash 优先进入专用子图，避免通用工具流程重复分析和生成 Patch。
+    if state["analysis"].task_type == "crash_analysis":
+        return "crash_analysis"
     if (
         should_collect_context(state)
         or should_search_knowledge(state)
     ):
         return "tool_model"
 
-    return "writer"
-
-def route_after_collector(state: AgentState) -> Literal["searcher", "writer"] :
-    """
-    Collector完成后判断是否还需要搜索知识。
-    """
-    if should_search_knowledge(state):
-         return "searcher"
     return "writer"
 
 def route_after_writer(state: AgentState) -> Literal["patcher","reviewer","final"]:
@@ -89,4 +84,3 @@ def route_after_approval(
     if state["approval_status"] == "approved":
         return "reviewer"
     return "final"
-    

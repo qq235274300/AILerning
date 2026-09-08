@@ -36,37 +36,7 @@ class SearchLogsArgs(BaseModel):
     keyword: str = Field(...,description="Keyword to search in log files")
     directory: str = Field(".",description="Directory to search logs in")
 
-#Angent流程
-class RequestAnalysis(BaseModel):
-    task_type: Literal[
-        "crash",
-        "code",
-        "log",
-        "ue_api",
-        "compile_error",
-        "link_error",
-        "other"
-    ]
-    needs_file_context: bool
-    needs_log_context: bool
-    needs_rag_search: bool
-    search_queries: List[str]
-    reason: str
-
-class CollectedContext(BaseModel):
-    files: List[dict]= []
-    logs: List[dict]= []
-    code_snippets: List[dict]= []
-    
-class KnowledgeResult(BaseModel):
-    query: str
-    results: List[dict]
-
-class ReviewResult(BaseModel):
-    passed: bool
-    issues: List[str]
-    revised_answer: UEAnswer | None = None
-
+# Agent 内部状态模型统一使用 Agent.schemas，这里只保留 API/工具请求模型。
 class PatchApprovalRequest(BaseModel):
     thread_id: str = Field(
         ...,

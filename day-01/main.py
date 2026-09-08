@@ -2,8 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from LLM import chat,stream_chat
-from Agent.pipeline import run_agent,run_agent_stream
-from Agent.crash_analyzer import run_crash_agent
+from Agent.graph.crash.workflow import crash_graph
 from Agent.graph.service import (
     run_agent_graph,
     run_agent_graph_stream,
@@ -49,24 +48,14 @@ async def chat_stream(req: ChatRequest):
         media_type="application/json"
     )
     
-@app.post("/agent")
-async def agent_api(req: ChatRequest):
-    result = run_agent(req.question)
-    return result
-
-@app.post("/agent/stream")
-async def agent_stream_api(req: ChatRequest):
-    return StreamingResponse(
-        run_agent_stream(req.question),
-        media_type="application/x-ndjson"
-    )
-
-#检查UE Crash专用流程，Agent使用agent_stream_api
+# 专用接口直接复用子图，不再维护第二套 Crash 调度。
 @app.post("/crash")
-async def crash_api(req: CrashRequest):
-    return run_crash_agent(req.path)
+def crash_api(req: CrashRequest):
+    return crash_graph.invoke({"log_path": req.path})["report"]
 
-@app.post("/agent/graph")
+# 旧 URL 只做兼容别名，两种地址调用的是同一个处理函数。
+@app.post("/agent/graph", deprecated=True)
+@app.post("/agent")
 def agent_graph_api(req: AgentRequest):
     """
     LangGraph 同步接口。
@@ -79,7 +68,8 @@ def agent_graph_api(req: AgentRequest):
         req.thread_id
     )
     
-@app.post("/agent/graph/stream")
+@app.post("/agent/graph/stream", deprecated=True)
+@app.post("/agent/stream")
 def agent_graph_stream_api(req: AgentRequest):
     """
     LangGraph 节点级流式接口。
@@ -94,7 +84,8 @@ def agent_graph_stream_api(req: AgentRequest):
     )
 
 #分析 day-01/TestLogs/buggy_texture_loader.py，并生成 Patch 建议
-@app.post("/agent/graph/resume")
+@app.post("/agent/graph/resume", deprecated=True)
+@app.post("/agent/resume")
 def agent_graph_resume_api(
     req: PatchApprovalRequest
 ):

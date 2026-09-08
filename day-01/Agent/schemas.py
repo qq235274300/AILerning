@@ -11,10 +11,6 @@ class CrashReport(BaseModel):
     recommended_fixes: List[str] = Field(default_factory=list, description="建议修复方向")
     references: List[str] = Field(default_factory=list, description="引用来源，例如日志行号、UE 文档 source/page")
 
-class ToolNodeResult(BaseModel):
-    messages: List[dict] = Field(default_factory=list)
-    tool_results: List[dict] = Field(default_factory=list)
-
 class RequestAnalysis(BaseModel):
     task_type: Literal[
         "code_analysis",

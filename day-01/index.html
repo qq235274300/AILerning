@@ -237,8 +237,9 @@
     </main>
 
     <script>
-        const API_URL = "http://127.0.0.1:8000/agent/graph/stream";
-        const RESUME_URL = "http://127.0.0.1:8000/agent/graph/resume";
+        // Day80：正式入口统一到 LangGraph，仍携带原来的 thread_id。
+        const API_URL = "http://127.0.0.1:8000/agent/stream";
+        const RESUME_URL = "http://127.0.0.1:8000/agent/resume";
         const THREAD_ID_KEY = "ue_agent_thread_id";
 
         function createThreadId() {
@@ -263,6 +264,8 @@
         let threadId = loadThreadId();
 
         const EVENT_LABELS = {
+            // 当前订阅主图事件；子图内部各阶段会打印在服务端终端。
+            crash_analysis_done: "Crash 分析完成",
             graph_start: "图开始",
             planner_done: "Planner 完成",
             tool_model_done: "工具决策完成",

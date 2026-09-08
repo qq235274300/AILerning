@@ -9,6 +9,7 @@ from Agent.tools.tool_nodes import all_tools_node
 from Agent.graph.state import AgentState
 from Agent.graph.nodes import (
     approval_node,
+    crash_analysis_node,
     planner_node,
     writer_node,
     patcher_node,
@@ -29,6 +30,7 @@ def build_agent_graph():
     builder = StateGraph(AgentState)
 
     builder.add_node("planner", planner_node)
+    builder.add_node("crash_analysis", crash_analysis_node)
     builder.add_node("tool_model", tool_model_node)
     builder.add_node("tools", all_tools_node)
     builder.add_node("build_context", build_context_node)
@@ -45,6 +47,7 @@ def build_agent_graph():
         route_after_planner,
         {
             "tool_model": "tool_model",
+            "crash_analysis": "crash_analysis",
             "writer": "writer",
         },
     )
@@ -65,6 +68,8 @@ def build_agent_graph():
     builder.add_edge("tools", "tool_model")
 
     builder.add_edge("build_context", "writer")
+    # Day79 的 Crash 分支只输出报告，不生成 Patch，不要求人工确认。
+    builder.add_edge("crash_analysis", "final")
 
     builder.add_conditional_edges(
         "writer",

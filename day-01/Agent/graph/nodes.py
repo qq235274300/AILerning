@@ -1,8 +1,8 @@
+from pathlib import Path
 from Agent.graph.state import AgentState
-from Agent.schemas import CollectedContext
+from Agent.graph.crash.workflow import crash_graph
+from Agent.schemas import CrashReport
 from Agent.planner import analyze_request
-from Agent.collector import collect_context
-from Agent.searcher import search_knowledge
 from Agent.patcher import propose_patch
 from Agent.reviewer import review_answer
 from Agent.writer import generate_suggestion
@@ -39,6 +39,30 @@ def planner_node(state: AgentState)-> AgentState:
         "analysis": analysis
     }
     
+def crash_analysis_node(state: AgentState) -> AgentState:
+    """把主图的文件路径映射到子图，再把报告映射回主图。"""
+    print("LangGraph node: crash_analysis")
+    log_paths = list(dict.fromkeys(
+        path for path in state["analysis"].file_paths
+        if Path(path).suffix.lower() == ".log"
+    ))
+    # 第一版只接受一个明确的日志路径，不猜测应该读取哪个文件。
+    if len(log_paths) != 1:
+        report = CrashReport(
+            crash_type="unknown",
+            summary="请提供一个明确的 .log 文件路径进行分析。",
+            error_message="",
+        )
+    else:
+        # 在节点内调用子图，LangGraph 会传递当前运行的配置。
+        result = crash_graph.invoke({
+            "log_path": log_paths[0], "log_text": "",
+            "read_error": "", "knowledge": {},
+        })
+        report = result["report"]
+    return {"crash_report": report}
+
+
 def writer_node(state: AgentState) -> AgentState:
     print("LangGraph node: writer")
     """
@@ -92,33 +116,6 @@ def approval_node(state: AgentState)-> AgentState:
     }
     
     
-def collector_node(state: AgentState) -> AgentState:
-    """
-    收集项目文件、代码和日志上下文。
-    """
-    print("LangGraph node: collector")
-    context = collect_context(
-        question=state["user_request"],
-        analysis=state["analysis"]
-    )
-    return {
-        "context": context
-    }
-
-def searcher_node(state: AgentState) -> AgentState:
-    """
-    根据Planner判断搜索RAG 或 Web.
-    """
-    print("LangGraph node: searcher")
-    context = search_knowledge(
-        question=state["user_request"],
-        analysis=state["analysis"],
-        context=state["context"]
-    )
-    return {
-        "context": context
-    }
-    
 def patcher_node(state: AgentState) -> AgentState:
     """
     根据代码分析结果生成Patch建议。
@@ -157,7 +154,10 @@ def final_node(state: AgentState) -> AgentState:
     该节点不调用OpenAI。
     """
     print("LangGraph node: final")
-    if state.get("approval_status") == "rejected":
+    # Crash 报告已由子图生成，不需要 Writer 草稿，也不进入 Patch 审批。
+    if state.get("crash_report") is not None:
+        final_answer = state["crash_report"].model_dump_json(indent=2)
+    elif state.get("approval_status") == "rejected":
         feedback = state.get("approval_feedback", "")
 
         final_answer = (

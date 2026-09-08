@@ -4,6 +4,7 @@ from langchain_core.messages import HumanMessage
 from Agent.schemas import(
     RequestAnalysis,
     CollectedContext,
+    CrashReport,
     DraftAnswer,
     PatchSuggestion,
     ReviewResult
@@ -23,7 +24,9 @@ class AgentState(MessagesState,total = False):
     #Collector 和 Searcher收集到的文件，日志，RAG，Web等上下文
     context: CollectedContext
     #Writer生成的初步答案
-    draft : DraftAnswer
+    draft : DraftAnswer | None
+    # Crash 子图的独立报告，普通问题没有此结果。
+    crash_report: CrashReport | None
     #Patcher 生成的修改建议，普通问题可能没有Patch
     patch_suggestion: PatchSuggestion | None
     #Patch 等待人工确认，已确认或已拒绝
@@ -50,6 +53,9 @@ def create_initial_state(question: str)-> AgentState:
             HumanMessage(content= question)
         ],
         "context": CollectedContext(),
+        # 新一轮可能跳过 Writer 或 Crash 子图，不能残留上一轮的结果。
+        "draft": None,
+        "crash_report": None,
         "patch_suggestion": None,
         "approval_status": None,
         "approval_feedback": "",
